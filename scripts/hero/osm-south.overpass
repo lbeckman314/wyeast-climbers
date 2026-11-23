@@ -1,0 +1,11 @@
+[out:json][timeout:90];
+(
+  way["highway"~"^(trunk|primary|secondary|tertiary|unclassified|residential|service)$"](45.285,-121.80,45.345,-121.68);
+  way["piste:type"](45.29,-121.80,45.345,-121.68);
+  way["highway"~"^(path|track|footway)$"]["name"](45.29,-121.80,45.345,-121.68);
+  node["natural"="peak"](45.27,-121.82,45.34,-121.68);
+  nwr["landuse"="winter_sports"](45.27,-121.82,45.345,-121.68);
+  way["building"](45.296,-121.77,45.31,-121.73);
+  nwr["name"]["highway"!~"."](45.29,-121.79,45.345,-121.69);
+);
+out geom tags;

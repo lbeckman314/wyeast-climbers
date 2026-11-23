@@ -5,6 +5,8 @@ export const site = {
   title: "Wy'east Climbers",
   tagline: "A Living History",
   url: "https://wyeastclimbers.com",
+  /** The site's source code, linked from the header. */
+  repo: "https://github.com/lbeckman314/wyeast-climbers",
 
   /**
    * Who runs the site. The contact button reads "Email {name}" and writes to `email`.
