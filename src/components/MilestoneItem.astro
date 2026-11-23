@@ -23,9 +23,9 @@ const year = m.data.date && !m.data.undated ? m.data.date.getUTCFullYear() : und
     {(people.length > 0 || exhibit) && (
       <p class="links">
         {people.length > 0 && (
-          <span>People: {people.map((p, i) => <>{i > 0 && ", "}<a href={`/people/${p.id}`}>{p.data.name.replace(/ \(.*\)$/, "")}</a></>)}</span>
+          <span>People: {people.map((p, i) => <>{i > 0 && ", "}<a href={`#person-${p.id}`}>{p.data.name.replace(/ \(.*\)$/, "")}</a></>)}</span>
         )}
-        {exhibit && <span>Exhibit: <a href={`/exhibits/${exhibit.id}`}>{exhibit.data.title}</a></span>}
+        {exhibit && <span>Exhibit: <a href={`#exhibit-${exhibit.id}`}>{exhibit.data.title}</a></span>}
       </p>
     )}
     {sources.length > 0 && (

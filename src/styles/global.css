@@ -64,7 +64,7 @@ p { margin: 0 0 1.1rem; }
 .brand svg { width: 2rem; height: 2rem; color: var(--accent); }
 .nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; font: 500 0.95rem/1 var(--sans); }
 .nav a { color: var(--ink-soft); text-decoration: none; padding: 0.35rem 0; border-bottom: 2px solid transparent; }
-.nav a:hover, .nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.nav a:hover, .nav a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
 
 .nav .icon { display: inline-flex; align-items: center; padding: 0.35rem 0.1rem; border: 0; background: none; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; }
 .nav .icon:hover { color: var(--ink); }

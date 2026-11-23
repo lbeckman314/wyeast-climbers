@@ -24,12 +24,12 @@ They called themselves the **Wy'east Climbers**, after *Wy'east*, a name for Mou
 The usual date, used by Conrad and by Jack Grauer, is **December 1930**. A history of Pacific Northwest search and rescue gives **1931** instead, along with a story too good to leave out: after a hike up the Larch Mountain Trail from Multnomah Falls, the founders held their organizing meeting "in the men's restroom of the Multnomah Falls Lodge."
 
 <aside class="callout">
-<strong>Open question.</strong> Do the first issues of the <em>Wy'east Bulletin</em> or the club's founding papers still exist? They would settle the date. Please <a href="/about#contribute">get in touch</a> if you know where they are.
+<strong>Open question.</strong> Do the first issues of the <em>Wy'east Bulletin</em> or the club's founding papers still exist? They would settle the date. Please <a href="#contribute">get in touch</a> if you know where they are.
 </aside>
 
 ## A different kind of club
 
-What set the Wy'easters apart, apart from their ambition, was how seriously they took safety. They are remembered as possibly the first climbing team to require **first-aid training of every member**, "something unheard of prior to this." That rule mattered more than anyone expected. Over the following decade Wy'easters were often among the first to reach injured or lost climbers on the mountain, and the club helped found the Mount Hood Ski Patrol (see [Patrol and Rescue](/exhibits/patrol-and-rescue)).
+What set the Wy'easters apart, apart from their ambition, was how seriously they took safety. They are remembered as possibly the first climbing team to require **first-aid training of every member**, "something unheard of prior to this." That rule mattered more than anyone expected. Over the following decade Wy'easters were often among the first to reach injured or lost climbers on the mountain, and the club helped found the Mount Hood Ski Patrol (see [Patrol and Rescue](#exhibit-patrol-and-rescue)).
 
 The club also put up its own building. By most accounts members built a **club cabin in 1934**. We are still trying to find out where it stood and what became of it.
 

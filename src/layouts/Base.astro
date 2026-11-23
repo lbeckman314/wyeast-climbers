@@ -2,17 +2,16 @@
 import "../styles/global.css";
 import Mark from "../components/Mark.astro";
 
-interface Props { title?: string; description?: string; index?: boolean }
-const { title, index = true, description = "A living history of the Wy'east Climbers, the Portland mountaineering club that pioneered new routes on Mount Hood in the 1930s." } = Astro.props;
+interface Props { title?: string; description?: string }
+const { title, description = "A living history of the Wy'east Climbers, the Portland mountaineering club that pioneered new routes on Mount Hood in the 1930s." } = Astro.props;
 const fullTitle = title ? `${title} · Wy'east Climbers` : "Wy'east Climbers · A Living History";
-const path = Astro.url.pathname.replace(/\/$/, "") || "/";
 const nav = [
-  ["/timeline", "Timeline"],
-  ["/exhibits", "Exhibits"],
-  ["/people", "People"],
-  ["/map", "Map"],
-  ["/sources", "Sources"],
-  ["/about", "About & Contribute"],
+  ["/#timeline", "Timeline"],
+  ["/#exhibits", "Exhibits"],
+  ["/#map", "Map"],
+  ["/#people", "People"],
+  ["/#sources", "Sources"],
+  ["/#about", "About & Contribute"],
 ];
 ---
 <!doctype html>
@@ -37,24 +36,21 @@ const nav = [
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div class="draft-banner"><div class="wrap"><strong>Working draft.</strong> This site is being researched in the open. Entries marked <em>Needs a source</em> or <em>Sources disagree</em> are still being checked. <a href="/about#contribute">Corrections welcome.</a></div></div>
+    <div class="draft-banner"><div class="wrap"><strong>Working draft.</strong> This site is being researched in the open. Entries marked <em>Needs a source</em> or <em>Sources disagree</em> are still being checked. <a href="/#contribute">Corrections welcome.</a></div></div>
     <header class="site-header">
       <div class="wrap">
         <a class="brand" href="/"><Mark /> Wy'east Climbers</a>
         <nav class="nav" aria-label="Main">
           {nav.map(([href, label]) => (
-            <a href={href} aria-current={path === href || path.startsWith(href + "/") ? "page" : undefined}>{label}</a>
+            <a href={href}>{label}</a>
           ))}
-          <a href="/search" class="icon" aria-label="Search" aria-current={path === "/search" ? "page" : undefined}>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </a>
           <button type="button" class="icon theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
           </button>
         </nav>
       </div>
     </header>
-    <main data-pagefind-body={index ? "" : undefined}>
+    <main>
       <slot />
     </main>
     <footer class="site-footer">
@@ -65,7 +61,7 @@ const nav = [
           This site summarizes and cites published sources and does not reproduce them. Photographs appear only
           with permission from their holders.
         </p>
-        <p>wyeastclimbers.com · A non-commercial history and preservation project. · <a href="/research">Research desk</a> · <a href="/search">Search</a></p>
+        <p>wyeastclimbers.com · A non-commercial history and preservation project. · <a href="/#research">Research desk</a></p>
       </div>
     </footer>
     <script>

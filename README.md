@@ -2,7 +2,13 @@
 
 A living history of the Wy'east Climbers, the Portland mountaineering club that
 pioneered new routes on Mount Hood in the 1930s. Built with [Astro](https://astro.build)
-as a static site, ready for GitHub Pages.
+as a static, single-page site, ready for GitHub Pages.
+
+Everything (timeline, exhibits, route map, people, sources, research desk, about) renders
+into one page, `src/pages/index.astro`, with each part reachable by anchor (`/#timeline`,
+`/#exhibit-ranger`, `/#person-everett-darr`, …). Old URLs such as `/timeline` or
+`/people/ranger` still work and redirect to their section. Inside markdown content, link
+with anchors: `#contribute`, `#exhibit-<id>`, `#person-<id>`, or a milestone's `#<id>`.
 
 ## Run it
 

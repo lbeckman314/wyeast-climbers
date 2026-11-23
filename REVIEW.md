@@ -23,7 +23,7 @@ Also worth checking:
 - Whether Bill Hackett (North Face, 1936) was a Wy'easter.
 
 ## 2. Things only you can decide
-- **Contact email**: the About page uses `hello@wyeastclimbers.com` as a placeholder (`src/pages/about.astro`). Set it up or change it.
+- **Contact email**: the About page uses `hello@wyeastclimbers.com` as a placeholder (`src/pages/index.astro`, About section). Set it up or change it.
 - **Site voice and "we"**: the copy speaks as "we" (the project). Who is behind it publicly?
 - **Draft banner**: remove from `src/layouts/Base.astro` when you're ready.
 - **Separate repo vs. subfolder**: see README → Deploying.

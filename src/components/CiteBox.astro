@@ -1,10 +1,10 @@
 ---
-interface Props { title: string }
-const { title } = Astro.props;
-const url = new URL(Astro.url.pathname, Astro.site).toString();
+interface Props { title: string; anchor?: string }
+const { title, anchor } = Astro.props;
+const url = new URL(Astro.url.pathname + (anchor ? `#${anchor}` : ""), Astro.site).toString();
 ---
 <aside class="cite" data-pagefind-ignore>
-  <h2 class="kicker">Cite this page</h2>
+  <h4 class="kicker">Cite this</h4>
   <p class="citation">“{title}.” <em>Wy'east Climbers: A Living History</em>. {url}. Accessed <span class="accessed">[date]</span>.</p>
   <button type="button" class="copy">Copy citation</button>
 </aside>

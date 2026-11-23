@@ -8,4 +8,4 @@ order: 9
 
 One of the surviving Wy'easters Ric Conrad interviewed for his history of the club.
 
-*Profile needed.* Families of members are warmly invited to [share stories and photographs](/about#contribute).
+*Profile needed.* Families of members are warmly invited to [share stories and photographs](#contribute).

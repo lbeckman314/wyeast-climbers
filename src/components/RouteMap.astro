@@ -56,7 +56,7 @@ const [tx, ty] = pt(163, 272);
         <li data-route={r.id} class={r.kind}>
           <span class="swatch" aria-hidden="true"></span>
           <div>
-            <strong>{r.milestone ? <a href={`/timeline#${r.milestone}`}>{r.name}</a> : r.name}</strong>
+            <strong>{r.milestone ? <a href={`#${r.milestone}`}>{r.name}</a> : r.name}</strong>
             <span class="kind">{kindLabels[r.kind]}</span>
             <p>{r.summary}</p>
           </div>

@@ -1,68 +1,507 @@
 ---
+import { getCollection, render } from "astro:content";
 import Base from "../layouts/Base.astro";
 import Hero from "../components/Hero.astro";
-import { getExhibits, getMilestones } from "../lib";
+import Badge from "../components/Badge.astro";
+import MilestoneItem from "../components/MilestoneItem.astro";
+import RouteMap from "../components/RouteMap.astro";
+import SourceList from "../components/SourceList.astro";
+import CiteBox from "../components/CiteBox.astro";
+import { getExhibits, getMilestones, getPeople, categoryLabels, membershipLabels } from "../lib";
 
+const email = "hello@wyeastclimbers.com";
+
+// ---- Collections ----
+const { dated, undated, all: milestones } = await getMilestones();
 const exhibits = await getExhibits();
-const { dated } = await getMilestones();
-const highlights = ["1930-founding", "1937-sandy-headwall", "1938-03-ski-patrol-incorporated", "1940-07-ranger-burial"]
-  .map((id) => dated.find((m) => m.id === id))
-  .filter((m) => m !== undefined);
+const people = await getPeople();
+const sources = await getCollection("sources");
+const permissions = await getCollection("permissions");
+const allExhibits = await getCollection("exhibits");
+
+const byDate = <T extends { data: { date?: Date } }>(xs: T[]) =>
+  [...xs].sort((a, b) => (a.data.date?.getTime() ?? Infinity) - (b.data.date?.getTime() ?? Infinity));
+
+// ---- Timeline ----
+const decades = [...new Set(dated.map((m) => Math.floor(m.data.date!.getUTCFullYear() / 10) * 10))];
+
+// ---- Exhibits (rendered in full) ----
+const exhibitBlocks = await Promise.all(
+  exhibits.map(async (e) => ({
+    e,
+    Content: (await render(e)).Content,
+    related: byDate(milestones.filter((m) => m.data.exhibit?.id === e.id)),
+  })),
+);
+
+// ---- People (rendered in full) ----
+const personBlocks = await Promise.all(
+  people.map(async (p) => ({
+    p,
+    Content: (await render(p)).Content,
+    related: byDate(milestones.filter((m) => m.data.people.some((r) => r.id === p.id))),
+  })),
+);
+const peopleGroups = [
+  ["Wy'east Climbers", personBlocks.filter(({ p }) => p.data.membership !== "associate")],
+  ["Friends, rivals and fellow travelers", personBlocks.filter(({ p }) => p.data.membership === "associate")],
+] as const;
+
+// ---- Sources ----
+const usage = (id: string) =>
+  [...milestones, ...allExhibits, ...people].filter((x) => x.data.sources.some((s) => s.id === id)).length;
+const kinds = { book: "Books", article: "Articles", web: "Web pages", film: "Film", archive: "Archives" } as const;
+const counts = {
+  sourced: milestones.filter((m) => m.data.status === "sourced").length,
+  conflicting: milestones.filter((m) => m.data.status === "conflicting").length,
+  unverified: milestones.filter((m) => m.data.status === "unverified").length,
+};
+
+// ---- Research desk ----
+// Pull the "*To verify:* …" note out of an entry's markdown, if it has one.
+const toVerify = (body = "") => {
+  const m = body.match(/\*To verify:\*\s*([^\n]+)/);
+  return m ? m[1].replace(/\*/g, "").trim() : undefined;
+};
+const conflicting = byDate(milestones.filter((m) => m.data.status === "conflicting"));
+const unverified = byDate(milestones.filter((m) => m.data.status === "unverified"));
+const otherNotes = milestones
+  .filter((m) => m.data.status === "sourced" && !m.data.undated && toVerify(m.body))
+  .map((m) => ({ m, note: toVerify(m.body)! }));
+const probable = people.filter((p) => p.data.membership === "probable");
+const thinProfiles = people.filter((p) => (p.body ?? "").includes("Profile needed"));
+const photoSlots =
+  allExhibits.reduce((n, e) => n + (e.body?.match(/class="photo-needed"/g)?.length ?? 0), 0) + people.length;
+const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).length;
 ---
 <Base>
-  <section class="hero">
+  <!-- ================= Intro ================= -->
+  <section class="hero" id="top">
     <Hero />
     <div class="wrap intro">
       <p class="kicker">Portland, Oregon · 1930–1942</p>
       <h1>The Wy'east Climbers</h1>
       <p class="lede">A small, bold club of Depression-era alpinists who made the first ascents of Mount Hood's hardest faces, required every member to know first aid, and helped found the nation's first organized volunteer ski patrol.</p>
-      <p class="ctas"><a class="btn" href="/timeline">Explore the timeline</a> <a class="btn ghost" href="/exhibits">Visit the exhibits</a></p>
+      <p class="ctas"><a class="btn" href="#timeline">Explore the timeline</a> <a class="btn ghost" href="#exhibits">Read the exhibits</a></p>
     </div>
+    <nav class="wrap toc" aria-label="On this page">
+      <a href="#timeline">Timeline</a>
+      <a href="#exhibits">Exhibits</a>
+      {exhibits.map((e) => <a class="sub" href={`#exhibit-${e.id}`}>{e.data.title}</a>)}
+      <a href="#map">Route map</a>
+      <a href="#people">People</a>
+      <a href="#sources">Sources</a>
+      <a href="#research">Research desk</a>
+      <a href="#about">About & Contribute</a>
+    </nav>
   </section>
 
-  <section class="wrap band">
-    <h2>Milestones</h2>
-    <ol class="highlights">
-      {highlights.map((m) => (
-        <li>
-          <span class="when">{m.data.dateLabel}</span>
-          <a href={`/timeline#${m.id}`}>{m.data.title}</a>
-        </li>
-      ))}
-    </ol>
-    <p><a href="/timeline">All {dated.length}+ timeline entries →</a></p>
+  <!-- ================= Timeline ================= -->
+  <section class="wrap page-section" id="timeline">
+    <p class="kicker">Timeline</p>
+    <h2 class="section-title">The Wy'east years, and after</h2>
+    <p class="lede">The club's milestones as best we can date them, with the Mount Hood events that shaped them. Every entry shows its sources and how firmly it is established.</p>
+
+    <div class="filters" role="group" aria-label="Filter by category">
+      <button type="button" data-filter="all" aria-pressed="true">All</button>
+      {Object.entries(categoryLabels).map(([k, v]) => <button type="button" data-filter={k} aria-pressed="false">{v}</button>)}
+    </div>
+    <nav class="decades" aria-label="Jump to decade">
+      {decades.map((d) => <a href={`#d${d}`}>{d}s</a>)}
+      {undated.length > 0 && <a href="#undated">Undated</a>}
+    </nav>
+
+    {decades.map((d) => (
+      <section class="decade" id={`d${d}`}>
+        <h3 class="decade-title">{d}s</h3>
+        <ol class="milestones">
+          {dated.filter((m) => Math.floor(m.data.date!.getUTCFullYear() / 10) * 10 === d).map((m) => <MilestoneItem m={m} />)}
+        </ol>
+      </section>
+    ))}
+
+    {undated.length > 0 && (
+      <section class="decade" id="undated">
+        <h3 class="decade-title">Not yet dated</h3>
+        <p class="note">These events are documented, but we haven't pinned down when they happened. Can you help?</p>
+        <ol class="milestones">{undated.map((m) => <MilestoneItem m={m} />)}</ol>
+      </section>
+    )}
   </section>
 
-  <section class="wrap band">
-    <h2>Exhibits</h2>
+  <!-- ================= Exhibits ================= -->
+  <section class="wrap page-section" id="exhibits">
+    <p class="kicker">Exhibits</p>
+    <h2 class="section-title">Stories from the mountain</h2>
+    <p class="lede">Longer pieces on particular parts of the club's history. More will be added as research and permissions allow.</p>
     <div class="card-grid">
       {exhibits.map((e) => (
-        <a class="card" href={`/exhibits/${e.id}`}>
+        <a class="card" href={`#exhibit-${e.id}`}>
           <p class="kicker">{e.data.kicker}</p>
           <h3>{e.data.title}</h3>
           <p>{e.data.summary}</p>
         </a>
       ))}
     </div>
+
+    {exhibitBlocks.map(({ e, Content, related }) => (
+      <article class="exhibit" id={`exhibit-${e.id}`}>
+        <header class="prose">
+          <p class="kicker">{e.data.kicker}</p>
+          <h3 class="exhibit-title">{e.data.title}</h3>
+          <p class="lede">{e.data.summary}</p>
+        </header>
+        {e.data.feature === "route-map" && <div id="map" class="anchor"><RouteMap /></div>}
+        <div class="layout">
+          <div class="prose body"><Content /></div>
+          <aside class="side">
+            {related.length > 0 && (
+              <section>
+                <h4 class="kicker">On the timeline</h4>
+                <ol>
+                  {related.map((m) => (
+                    <li><span>{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a></li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </aside>
+        </div>
+        <div class="prose"><SourceList refs={e.data.sources} /><CiteBox title={e.data.title} anchor={`exhibit-${e.id}`} /></div>
+        <p class="back"><a href="#exhibits">↑ All exhibits</a></p>
+      </article>
+    ))}
   </section>
 
-  <section class="wrap band ask">
-    <div class="prose">
-      <h2>Help preserve this history</h2>
-      <p>Most of what survives of the Wy'east Climbers sits in archives and family albums. If you have photographs, letters, climbing logs or stories, or you spot a mistake here, please <a href="/about#contribute">get in touch</a>.</p>
+  <!-- ================= People ================= -->
+  <section class="wrap page-section" id="people">
+    <p class="kicker">People</p>
+    <h2 class="section-title">The Wy'easters</h2>
+    <p class="lede">Profiles of members and of the people who climbed with them. The list is far from complete. If someone in your family was a Wy'easter, <a href="#contribute">we'd love to hear from you</a>.</p>
+    {peopleGroups.map(([label, list]) => (
+      <section>
+        <h3>{label}</h3>
+        <div class="card-grid">
+          {list.map(({ p }) => (
+            <a class="card" href={`#person-${p.id}`}>
+              <p class="kicker">{membershipLabels[p.data.membership]}{p.data.years && ` · ${p.data.years}`}</p>
+              <h3>{p.data.name}</h3>
+              {p.data.role && <p>{p.data.role}</p>}
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    {personBlocks.map(({ p, Content, related }) => (
+      <article class="person prose" id={`person-${p.id}`}>
+        <p class="kicker">{membershipLabels[p.data.membership]}</p>
+        <h3 class="person-name">{p.data.name}</h3>
+        <p class="sub">{p.data.years}{p.data.years && p.data.role && " · "}{p.data.role}</p>
+        <Badge status={p.data.status} />
+        <figure class="photo-needed portrait">
+          <div class="frame"><span>Portrait wanted</span></div>
+        </figure>
+        <Content />
+        {related.length > 0 && (
+          <section>
+            <h4>On the timeline</h4>
+            <ul class="tl">
+              {related.map((m) => <li><span>{m.data.dateLabel}</span> <a href={`#${m.id}`}>{m.data.title}</a></li>)}
+            </ul>
+          </section>
+        )}
+        <SourceList refs={p.data.sources} />
+        <CiteBox title={p.data.name} anchor={`person-${p.id}`} />
+        <p class="back"><a href="#people">↑ All people</a></p>
+      </article>
+    ))}
+  </section>
+
+  <!-- ================= Sources ================= -->
+  <section class="wrap page-section prose-section" id="sources">
+    <p class="kicker">Sources</p>
+    <h2 class="section-title">Sources & research leads</h2>
+    <p class="lede">Every claim on this site should trace back to something listed here.</p>
+    <p class="status">Timeline: <strong>{counts.sourced}</strong> entries sourced · <strong>{counts.conflicting}</strong> where sources disagree · <strong>{counts.unverified}</strong> still need a source.</p>
+
+    {Object.entries(kinds).map(([k, label]) => {
+      const list = sources.filter((s) => s.data.kind === k);
+      return list.length > 0 && (
+        <section>
+          <h3>{label}</h3>
+          <ul class="bib">
+            {list.map((s) => (
+              <li id={`source-${s.id}`}>
+                {s.data.author && <>{s.data.author}. </>}
+                {s.data.url ? <a href={s.data.url} rel="noopener">{s.data.title}</a> : <cite>{s.data.title}</cite>}
+                {s.data.publisher && <>. {s.data.publisher}</>}{s.data.year && <>, {s.data.year}</>}.
+                <span class="used">Cited {usage(s.id)}×</span>
+                {s.data.note && <p class="note">{s.data.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    })}
+
+    <section>
+      <h3>Archives to consult</h3>
+      <p>Most of the club's primary record sits in a few collections. Contacting them is the next step for verification and for photograph permissions.</p>
+      <ul class="bib">
+        <li><strong>Mazama Library & Historical Collections</strong> (Portland). Holds the Mazama Annuals, summit registers and many 1930s Mount Hood photographs, including Wy'east-era images by Joe Leuthold and Jim Harlow.</li>
+        <li><strong>Oregon Historical Society Research Library</strong>. The <em>Oregonian</em> and <em>Oregon Journal</em> archives, plus photograph collections.</li>
+        <li><strong>Mt. Hood Ski Patrol</strong>. Patrol records and early photographs from 1937–38.</li>
+        <li><strong>Mount Hood Museum</strong> (Government Camp). Local history collections and the Ranger story.</li>
+        <li><strong>The <em>Wy'east Bulletin</em></strong>. The club's own newsletter, cited by Conrad. Where the surviving copies are is unknown.</li>
+        <li><strong>Families of members</strong>. Letters, logbooks, photographs and oral histories.</li>
+      </ul>
+    </section>
+  </section>
+
+  <!-- ================= Research desk ================= -->
+  <section class="wrap page-section" id="research">
+    <p class="kicker">For contributors</p>
+    <h2 class="section-title">Research desk</h2>
+    <p class="lede">Everything still open on the site, collected in one place and regenerated each time the site is built. If you can answer any of these, please <a href="#contribute">get in touch</a>.</p>
+
+    <dl class="stats">
+      <div><dt>Sources disagree</dt><dd>{conflicting.length}</dd></div>
+      <div><dt>Need a source</dt><dd>{unverified.length}</dd></div>
+      <div><dt>Not yet dated</dt><dd>{undated.length}</dd></div>
+      <div><dt>Membership to confirm</dt><dd>{probable.length}</dd></div>
+      <div><dt>Photographs wanted</dt><dd>{photoSlots}</dd></div>
+    </dl>
+
+    <div class="cols">
+      <section>
+        <h3>Where sources disagree</h3>
+        <ul class="qs">
+          {conflicting.map((m) => (
+            <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a> <Badge status="conflicting" /></li>
+          ))}
+        </ul>
+
+        <h3>Claims that need a source</h3>
+        <ul class="qs">
+          {unverified.map((m) => (
+            <li>
+              <span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a>
+              {toVerify(m.body) && <p>{toVerify(m.body)}</p>}
+            </li>
+          ))}
+        </ul>
+
+        <h3>Events we can't yet date</h3>
+        <ul class="qs">
+          {undated.map((m) => (
+            <li><a href={`#${m.id}`}>{m.data.title}</a>{toVerify(m.body) && <p>{toVerify(m.body)}</p>}</li>
+          ))}
+        </ul>
+
+        {otherNotes.length > 0 && (
+          <>
+            <h3>Other details to check</h3>
+            <ul class="qs">
+              {otherNotes.map(({ m, note }) => (
+                <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a><p>{note}</p></li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      <section>
+        <h3>People</h3>
+        <h4>Membership to confirm</h4>
+        <ul class="qs">{probable.map((p) => <li><a href={`#person-${p.id}`}>{p.data.name}</a></li>)}</ul>
+        <h4>Profiles needed</h4>
+        <ul class="qs">{thinProfiles.map((p) => <li><a href={`#person-${p.id}`}>{p.data.name}</a></li>)}</ul>
+
+        <h3 id="permissions">Photo permissions</h3>
+        <p class="small">{byStatus("granted")} granted · {byStatus("requested")} requested · {byStatus("wanted")} not yet requested</p>
+        <ul class="perm">
+          {permissions.map((p) => (
+            <li class={p.data.status}>
+              <span class="pill">{p.data.status}</span>
+              <strong>{p.data.item}</strong>
+              <span class="holder">{p.data.holder}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="small">Kept in <code>src/content/permissions.yaml</code>.</p>
+      </section>
     </div>
   </section>
+
+  <!-- ================= About ================= -->
+  <section class="wrap page-section prose-section" id="about">
+    <p class="kicker">About</p>
+    <h2 class="section-title">A living history</h2>
+    <p class="lede">This site gathers what is known about the Wy'east Climbers, the small Portland club that put up new routes on Mount Hood in the 1930s and helped found the Mount Hood Ski Patrol, and keeps that record growing.</p>
+
+    <h3>What we're doing</h3>
+    <ul>
+      <li><strong>Recording milestones</strong> on a timeline, with every entry cited and marked by how well it's established.</li>
+      <li><strong>Telling the stories</strong> in long-form exhibits.</li>
+      <li><strong>Remembering the people</strong>: members, friends, rivals and one remarkable dog.</li>
+      <li><strong>Preserving material</strong> that survives in family collections, before it's lost.</li>
+    </ul>
+
+    <h3>Standing on Ric Conrad's shoulders</h3>
+    <p>Ric Conrad's <cite>Mount Hood: Adventures of the Wy'east Climbers, 1930–1942</cite> (Kahuna Books, 2014) is the essential history of the club. It is built on interviews with surviving members and years in the archives. This site is not a substitute for it. We summarize and cite it and point readers to it. Please buy the book, available from the Mount Hood Museum, the Oregon Historical Society and booksellers.</p>
+
+    <h3 id="contribute">Contribute</h3>
+    <p>Was someone in your family a Wy'easter? Do you have photographs, letters, climbing logs, issues of the <em>Wy'east Bulletin</em>, or a correction? We'd love to hear from you.</p>
+    <p><a class="btn" href={`mailto:${email}?subject=Wy'east%20Climbers%20history`}>Email {email}</a></p>
+    <p>When you share material, tell us:</p>
+    <ul>
+      <li>who is pictured or mentioned, and roughly when and where;</li>
+      <li>who took the photograph, if known;</li>
+      <li>whether you're happy for it to appear on the site, and how you'd like it credited.</li>
+    </ul>
+    <p>We would much rather scan and return originals than keep them, and we can work from good phone photos.</p>
+    <p>Researchers: the <a href="#research">Research desk</a> lists every open question on the site, along with the photographs we're still seeking.</p>
+
+    <h3>Images and permissions</h3>
+    <p>Photographs appear only with permission from whoever holds the rights, and are always credited. Gray "photograph wanted" frames mark where we know a picture exists, or ought to, and are still seeking it.</p>
+
+    <h3>How entries are marked</h3>
+    <dl class="key">
+      <dt><span class="badge sourced">✓ Sourced</span></dt><dd>Backed by at least one cited source.</dd>
+      <dt><span class="badge conflicting">≠ Sources disagree</span></dt><dd>Sources conflict, and the entry explains how.</dd>
+      <dt><span class="badge unverified">? Needs a source</span></dt><dd>Plausible but not yet confirmed. Treat with care.</dd>
+    </dl>
+  </section>
 </Base>
+
 <style>
+  /* intro */
   .hero { margin-top: -2.5rem; }
   .intro { padding-top: 1.5rem; }
   .ctas { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
-  .band { margin-top: 3.5rem; }
-  .highlights { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
-  .highlights li { border-top: 3px solid var(--accent); padding-top: 0.75rem; }
-  .highlights .when { display: block; font: 600 0.85rem/1.3 var(--sans); color: var(--ink-soft); margin-bottom: 0.25rem; }
-  .highlights a { font: 600 1.15rem/1.3 var(--display); color: var(--ink); text-decoration: none; }
-  .highlights a:hover { color: var(--accent); }
-  .ask { background: var(--paper-2); padding: 2rem; border-radius: 6px; }
-  @media (max-width: 520px) { .ask { padding: 1.25rem; } }
+  .toc { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 2rem; padding: 1rem 1.25rem; background: var(--paper-2); border-radius: 6px; font: 600 0.92rem/1.5 var(--sans); }
+  .toc .sub { font-weight: 400; color: var(--ink-soft); }
+
+  /* shared section chrome */
+  .page-section { margin-top: 5rem; padding-top: 2.5rem; border-top: 2px solid var(--rule); }
+  .section-title { font-size: clamp(2rem, 4.5vw, 3rem); margin: 0 0 0.5rem; }
+  [id] { scroll-margin-top: 1rem; }
+  .prose-section > * { max-width: var(--measure); }
+  .prose-section > .bib, .prose-section > section { max-width: var(--measure); }
+  .back { font: 600 0.9rem/1.4 var(--sans); margin-top: 1.5rem; }
+
+  /* timeline */
+  .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1rem; }
+  .filters button { font: 500 0.85rem/1 var(--sans); padding: 0.55em 0.9em; border-radius: 999px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
+  .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .decades { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font: 600 0.9rem/1.6 var(--sans); }
+  .decade-title { position: sticky; top: 0; background: var(--paper); padding: 0.5rem 0; z-index: 1; margin-bottom: 0; font-size: 1.6rem; }
+  .milestones { list-style: none; margin: 0; padding: 0; }
+  .note { color: var(--ink-soft); font-size: 1rem; }
+  .decade.empty { display: none; }
+
+  /* exhibits */
+  .exhibit { margin-top: 4rem; padding-top: 2.5rem; border-top: 1px solid var(--rule); }
+  .exhibit header { margin-bottom: 2rem; }
+  .exhibit-title { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 0.5rem; }
+  .layout { display: grid; grid-template-columns: minmax(0, var(--measure)) minmax(0, 18rem); gap: 3.5rem; }
+  .side section { position: sticky; top: 1.5rem; border-left: 1px solid var(--rule); padding-left: 1.25rem; }
+  .side ol { list-style: none; margin: 0; padding: 0; font: 0.9rem/1.4 var(--sans); }
+  .side li { margin-bottom: 0.9rem; }
+  .side li span { display: block; color: var(--ink-soft); font-size: 0.8rem; }
+  .body :global(h2) { margin-top: 2.75rem; font-size: 1.45rem; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 0; }
+    .side section { position: static; border-left: 0; border-top: 1px solid var(--rule); padding: 1.5rem 0 0; margin-top: 2rem; }
+  }
+
+  /* people */
+  .person { margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid var(--rule); }
+  .person-name { font-size: 2rem; margin: 0 0 0.4rem; }
+  .sub { font: 1rem/1.4 var(--sans); color: var(--ink-soft); margin-bottom: 0.75rem; }
+  .portrait { max-width: 16rem; }
+  .portrait .frame { aspect-ratio: 4 / 5; }
+  .tl { padding-left: 1.1rem; }
+  .tl span { font: 600 0.85rem/1 var(--sans); color: var(--ink-soft); }
+
+  /* sources */
+  .status { font: 0.95rem/1.5 var(--sans); background: var(--paper-2); padding: 0.75rem 1rem; border-radius: 4px; }
+  .bib { padding-left: 1.1rem; }
+  .bib li { margin-bottom: 1rem; }
+  .used { font: 0.75rem/1 var(--sans); color: var(--ink-soft); margin-left: 0.4rem; }
+  .bib .note { font-size: 0.95rem; margin: 0.3rem 0 0; }
+
+  /* research desk */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; margin: 2rem 0; }
+  .stats div { background: var(--paper); padding: 1rem 1.1rem; }
+  .stats dt { font: 600 0.72rem/1.3 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+  .stats dd { margin: 0.3rem 0 0; font: 600 2rem/1 var(--display); }
+  .cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 3rem; }
+  .cols h3:first-child { margin-top: 0; }
+  .qs { list-style: none; padding: 0; margin: 0; font: 0.95rem/1.45 var(--sans); }
+  .qs li { padding: 0.65rem 0; border-top: 1px solid var(--rule); }
+  .qs .when { display: block; font-size: 0.78rem; color: var(--ink-soft); }
+  .qs p { margin: 0.25rem 0 0; color: var(--ink-soft); font-size: 0.88rem; }
+  .qs p::first-letter { text-transform: uppercase; }
+  .qs :global(.badge) { margin-left: 0.4rem; vertical-align: 1px; }
+  .perm { list-style: none; padding: 0; margin: 0; font: 0.9rem/1.4 var(--sans); }
+  .perm li { padding: 0.65rem 0; border-top: 1px solid var(--rule); }
+  .perm strong { display: block; font-weight: 500; margin: 0.25rem 0 0.1rem; }
+  .holder { color: var(--ink-soft); font-size: 0.82rem; }
+  .pill { font: 600 0.68rem/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 0.25em 0.5em; border-radius: 3px; background: var(--paper-2); color: var(--ink-soft); }
+  .granted .pill { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+  .requested .pill { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+  .declined .pill { background: color-mix(in srgb, var(--rust) 20%, transparent); color: var(--rust); }
+  .small { font: 0.85rem/1.5 var(--sans); color: var(--ink-soft); }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+
+  /* about */
+  .key { display: grid; grid-template-columns: max-content 1fr; gap: 0.6rem 1rem; align-items: center; font-size: 1rem; }
+  .key dd { margin: 0; }
+  @media (max-width: 520px) { .key { grid-template-columns: 1fr; } .key dd { margin-bottom: 0.5rem; } }
 </style>
+
+<script>
+  // Timeline category filters
+  const buttons = document.querySelectorAll<HTMLButtonElement>(".filters button");
+  buttons.forEach((b) =>
+    b.addEventListener("click", () => {
+      const f = b.dataset.filter;
+      buttons.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      document.querySelectorAll<HTMLElement>(".milestone").forEach((li) => {
+        li.hidden = f !== "all" && li.dataset.category !== f;
+      });
+      document.querySelectorAll<HTMLElement>(".decade").forEach((s) => {
+        s.classList.toggle("empty", !s.querySelector(".milestone:not([hidden])"));
+      });
+    }),
+  );
+
+  // Make sure a deep link to a filtered-out milestone still shows it.
+  const reveal = () => {
+    if (!location.hash) return;
+    const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (el?.closest(".milestone[hidden]")) buttons[0]?.click();
+  };
+  addEventListener("hashchange", reveal);
+  reveal();
+
+  // Highlight the nav link for the section in view.
+  const navLinks = [...document.querySelectorAll<HTMLAnchorElement>(".nav a[href^='/#']")];
+  const sections = navLinks
+    .map((a) => document.getElementById(a.hash.slice(1)))
+    .filter((s): s is HTMLElement => !!s);
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        navLinks.forEach((a) =>
+          a.hash === `#${e.target.id}` ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current"),
+        );
+      }
+    },
+    { rootMargin: "-40% 0px -55% 0px" },
+  );
+  sections.forEach((s) => io.observe(s));
+</script>
