@@ -6,7 +6,6 @@ category: climb
 people: [joe-leuthold]
 sources: [conrad-qa-2015]
 status: sourced
-exhibit: routes
 ---
 The Leuthold Couloir climbs from Illumination Saddle on Hood's west side. Conrad credits its first ascent to the Wy'east Climbers.
 

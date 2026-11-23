@@ -7,4 +7,4 @@ people: [everett-darr]
 sources: [aac-darr-1982]
 status: sourced
 ---
-"Papa Darr," former president of the Wy'east Climbers, co-founder of the Mount Hood Ski Patrol and the Mountain Shop, and longtime operator of Government Camp ski areas, died at 74.
+"Papa Darr," former president of the Wy'east Climbers, co-founder of the Mount Hood Ski Patrol and the Mountain Shop, and longtime operator of Government Camp ski areas, [died at 74](https://publications.americanalpineclub.org/articles/12198233800/Everett-L-Darr-1907-1981).

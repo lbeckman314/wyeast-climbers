@@ -4,57 +4,52 @@ import Base from "../layouts/Base.astro";
 import Hero from "../components/Hero.astro";
 import Badge from "../components/Badge.astro";
 import MilestoneItem from "../components/MilestoneItem.astro";
-import RouteMap from "../components/RouteMap.astro";
 import SourceList from "../components/SourceList.astro";
 import CiteBox from "../components/CiteBox.astro";
-import { getExhibits, getMilestones, getPeople, categoryLabels, membershipLabels } from "../lib";
+import { getMilestones, getPeople, categoryLabels, membershipLabels } from "../lib";
+import { contactHref, contactLabel } from "../config";
+import landmarks from "../data/landmarks.json";
 
-const email = "hello@wyeastclimbers.com";
 
 // ---- Collections ----
 const { dated, undated, all: milestones } = await getMilestones();
-const exhibits = await getExhibits();
 const people = await getPeople();
 const sources = await getCollection("sources");
 const permissions = await getCollection("permissions");
-const allExhibits = await getCollection("exhibits");
 
 const byDate = <T extends { data: { date?: Date } }>(xs: T[]) =>
   [...xs].sort((a, b) => (a.data.date?.getTime() ?? Infinity) - (b.data.date?.getTime() ?? Infinity));
 
 // ---- Timeline ----
 const decades = [...new Set(dated.map((m) => Math.floor(m.data.date!.getUTCFullYear() / 10) * 10))];
-
-// ---- Exhibits (rendered in full) ----
-const exhibitBlocks = await Promise.all(
-  exhibits.map(async (e) => ({
-    e,
-    Content: (await render(e)).Content,
-    related: byDate(milestones.filter((m) => m.data.exhibit?.id === e.id)),
-  })),
-);
+// Events before the club's founding get a dashed line on the timeline.
+const founded = milestones.find((m) => m.id === "1930-founding")?.data.date ?? new Date("1930-12-01");
 
 // ---- People (rendered in full) ----
 const personBlocks = await Promise.all(
   people.map(async (p) => ({
     p,
     Content: (await render(p)).Content,
-    related: byDate(milestones.filter((m) => m.data.people.some((r) => r.id === p.id))),
+    related: byDate(dated.filter((m) => m.data.people.some((r) => r.id === p.id))),
   })),
 );
 const peopleGroups = [
   ["Wy'east Climbers", personBlocks.filter(({ p }) => p.data.membership !== "associate")],
-  ["Friends, rivals and fellow travelers", personBlocks.filter(({ p }) => p.data.membership === "associate")],
+  ["Friends & fellow travelers", personBlocks.filter(({ p }) => p.data.membership === "associate")],
 ] as const;
 
 // ---- Sources ----
 const usage = (id: string) =>
-  [...milestones, ...allExhibits, ...people].filter((x) => x.data.sources.some((s) => s.id === id)).length;
+  [...milestones, ...people].filter((x) => x.data.sources.some((s) => s.id === id)).length +
+  landmarks.filter((l) => l.sources.includes(id)).length;
+// Landmarks on the map cite sources too; fail the build on an unknown id, like the collections do.
+for (const l of landmarks)
+  for (const id of l.sources)
+    if (!sources.some((s) => s.id === id)) throw new Error(`Landmark "${l.id}" cites unknown source "${id}"`);
 const kinds = { book: "Books", article: "Articles", web: "Web pages", film: "Film", archive: "Archives" } as const;
 const counts = {
   sourced: milestones.filter((m) => m.data.status === "sourced").length,
   conflicting: milestones.filter((m) => m.data.status === "conflicting").length,
-  unverified: milestones.filter((m) => m.data.status === "unverified").length,
 };
 
 // ---- Research desk ----
@@ -64,30 +59,23 @@ const toVerify = (body = "") => {
   return m ? m[1].replace(/\*/g, "").trim() : undefined;
 };
 const conflicting = byDate(milestones.filter((m) => m.data.status === "conflicting"));
-const unverified = byDate(milestones.filter((m) => m.data.status === "unverified"));
 const otherNotes = milestones
   .filter((m) => m.data.status === "sourced" && !m.data.undated && toVerify(m.body))
   .map((m) => ({ m, note: toVerify(m.body)! }));
 const probable = people.filter((p) => p.data.membership === "probable");
 const thinProfiles = people.filter((p) => (p.body ?? "").includes("Profile needed"));
-const photoSlots =
-  allExhibits.reduce((n, e) => n + (e.body?.match(/class="photo-needed"/g)?.length ?? 0), 0) + people.length;
 const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).length;
 ---
 <Base>
   <!-- ================= Intro ================= -->
   <section class="hero" id="top">
     <Hero />
-    <div class="wrap intro">
-      <p class="kicker">Portland, Oregon · 1930–1942</p>
-      <h1>The Wy'east Climbers</h1>
+    <div class="wrap intro" id="intro">
       <p class="lede">A small, bold club of Depression-era alpinists who made the first ascents of Mount Hood's hardest faces, required every member to know first aid, and helped found the nation's first organized volunteer ski patrol.</p>
-      <p class="ctas"><a class="btn" href="#timeline">Explore the timeline</a> <a class="btn ghost" href="#exhibits">Read the exhibits</a></p>
+      <p class="ctas"><a class="btn" href="#timeline">Explore the timeline</a> <a class="btn ghost" href="#people">Meet the people</a></p>
     </div>
     <nav class="wrap toc" aria-label="On this page">
       <a href="#timeline">Timeline</a>
-      <a href="#exhibits">Exhibits</a>
-      {exhibits.map((e) => <a class="sub" href={`#exhibit-${e.id}`}>{e.data.title}</a>)}
       <a href="#map">Route map</a>
       <a href="#people">People</a>
       <a href="#sources">Sources</a>
@@ -104,73 +92,51 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
 
     <div class="filters" role="group" aria-label="Filter by category">
       <button type="button" data-filter="all" aria-pressed="true">All</button>
-      {Object.entries(categoryLabels).map(([k, v]) => <button type="button" data-filter={k} aria-pressed="false">{v}</button>)}
-    </div>
-    <nav class="decades" aria-label="Jump to decade">
-      {decades.map((d) => <a href={`#d${d}`}>{d}s</a>)}
-      {undated.length > 0 && <a href="#undated">Undated</a>}
-    </nav>
-
-    {decades.map((d) => (
-      <section class="decade" id={`d${d}`}>
-        <h3 class="decade-title">{d}s</h3>
-        <ol class="milestones">
-          {dated.filter((m) => Math.floor(m.data.date!.getUTCFullYear() / 10) * 10 === d).map((m) => <MilestoneItem m={m} />)}
-        </ol>
-      </section>
-    ))}
-
-    {undated.length > 0 && (
-      <section class="decade" id="undated">
-        <h3 class="decade-title">Not yet dated</h3>
-        <p class="note">These events are documented, but we haven't pinned down when they happened. Can you help?</p>
-        <ol class="milestones">{undated.map((m) => <MilestoneItem m={m} />)}</ol>
-      </section>
-    )}
-  </section>
-
-  <!-- ================= Exhibits ================= -->
-  <section class="wrap page-section" id="exhibits">
-    <p class="kicker">Exhibits</p>
-    <h2 class="section-title">Stories from the mountain</h2>
-    <p class="lede">Longer pieces on particular parts of the club's history. More will be added as research and permissions allow.</p>
-    <div class="card-grid">
-      {exhibits.map((e) => (
-        <a class="card" href={`#exhibit-${e.id}`}>
-          <p class="kicker">{e.data.kicker}</p>
-          <h3>{e.data.title}</h3>
-          <p>{e.data.summary}</p>
-        </a>
-      ))}
+      {Object.entries(categoryLabels).map(([k, v]) => <button type="button" data-filter={k} aria-pressed="false" class={`f-${k}`}><i aria-hidden="true"></i>{v}</button>)}
     </div>
 
-    {exhibitBlocks.map(({ e, Content, related }) => (
-      <article class="exhibit" id={`exhibit-${e.id}`}>
-        <header class="prose">
-          <p class="kicker">{e.data.kicker}</p>
-          <h3 class="exhibit-title">{e.data.title}</h3>
-          <p class="lede">{e.data.summary}</p>
-        </header>
-        {e.data.feature === "route-map" && <div id="map" class="anchor"><RouteMap /></div>}
-        <div class="layout">
-          <div class="prose body"><Content /></div>
-          <aside class="side">
-            {related.length > 0 && (
-              <section>
-                <h4 class="kicker">On the timeline</h4>
-                <ol>
-                  {related.map((m) => (
-                    <li><span>{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a></li>
-                  ))}
-                </ol>
-              </section>
-            )}
-          </aside>
+    <div class="tl">
+      <!-- Horizontal track: one stop per event, grouped by decade (shown when script runs). -->
+      <div class="tl-track-wrap">
+        <button type="button" class="tl-scroll prev" aria-label="Scroll timeline left">‹</button>
+        <div class="tl-track" role="tablist" aria-label="Timeline events" aria-orientation="horizontal">
+          {decades.map((d) => ({ label: `${d}s`, key: `d${d}`, items: dated.filter((m) => Math.floor(m.data.date!.getUTCFullYear() / 10) * 10 === d) })).map((g) => (
+            <div class="tl-group" id={g.key}>
+              <span class="tl-decade">{g.label}</span>
+              <div class="tl-stops">
+                {g.items.map((m) => {
+                  const y = m.data.date?.getUTCFullYear();
+                  const era = y !== undefined && y >= 1930 && y <= 1942;
+                  const pre = m.data.date! < founded;
+                  return (
+                    <button type="button" role="tab" class={`tl-stop cat-${m.data.category}${pre ? " pre" : era ? " in-era" : ""}`} data-id={m.id} data-category={m.data.category}
+                      aria-selected="false" aria-controls={`ms-${m.id}`} tabindex="-1">
+                      <span class="tl-date">{m.data.dateLabel}</span>
+                      <span class="tl-dot" aria-hidden="true"></span>
+                      <span class="tl-title">{m.data.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-        <div class="prose"><SourceList refs={e.data.sources} /><CiteBox title={e.data.title} anchor={`exhibit-${e.id}`} /></div>
-        <p class="back"><a href="#exhibits">↑ All exhibits</a></p>
-      </article>
-    ))}
+        <button type="button" class="tl-scroll next" aria-label="Scroll timeline right">›</button>
+      </div>
+      <p class="tl-era-key"><span class="k-pre" aria-hidden="true"></span> Before the club's founding <span class="k-era" aria-hidden="true"></span> The Wy'east years, 1930–1942</p>
+
+      <!-- Every entry is rendered; with script, only the selected one shows. -->
+      <div class="tl-panel">
+        <ol class="milestones">
+          {dated.map((m) => <MilestoneItem m={m} />)}
+        </ol>
+        <div class="tl-pager">
+          <button type="button" class="tl-step" data-step="-1">← Earlier</button>
+          <span class="tl-count" aria-live="polite"></span>
+          <button type="button" class="tl-step" data-step="1">Later →</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= People ================= -->
@@ -179,206 +145,203 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
     <h2 class="section-title">The Wy'easters</h2>
     <p class="lede">Profiles of members and of the people who climbed with them. The list is far from complete. If someone in your family was a Wy'easter, <a href="#contribute">we'd love to hear from you</a>.</p>
     {peopleGroups.map(([label, list]) => (
-      <section>
+      <section class="people-group">
         <h3>{label}</h3>
-        <div class="card-grid">
-          {list.map(({ p }) => (
-            <a class="card" href={`#person-${p.id}`}>
-              <p class="kicker">{membershipLabels[p.data.membership]}{p.data.years && ` · ${p.data.years}`}</p>
-              <h3>{p.data.name}</h3>
-              {p.data.role && <p>{p.data.role}</p>}
-            </a>
+        <div class="people-grid">
+          {list.map(({ p, Content, related }) => (
+            <>
+              <button type="button" class="card pcard" id={`person-${p.id}`} aria-expanded="false" aria-controls={`bio-${p.id}`}>
+                <span class="kicker">{membershipLabels[p.data.membership]}{p.data.years && ` · ${p.data.years}`}</span>
+                <span class="pcard-name">{p.data.name}</span>
+                {p.data.role && <span class="pcard-role">{p.data.role}</span>}
+                <span class="pcard-more" aria-hidden="true"><span class="open-label">Read bio</span><span class="close-label">Close</span></span>
+              </button>
+              <div class="pbio" id={`bio-${p.id}`} role="region" aria-labelledby={`bio-name-${p.id}`}>
+                <div class="pbio-head">
+                  <div>
+                    <p class="kicker">{membershipLabels[p.data.membership]}</p>
+                    <h4 class="person-name" id={`bio-name-${p.id}`}>{p.data.name}</h4>
+                    <p class="sub">{p.data.years}{p.data.years && p.data.role && " · "}{p.data.role}</p>
+                    <Badge status={p.data.status} />
+                  </div>
+                  <button type="button" class="pbio-close" aria-label={`Close ${p.data.name}'s bio`}>×</button>
+                </div>
+                <div class="pbio-body">
+                  <div class="prose"><Content /></div>
+                  <aside>
+                    {related.length > 0 && (
+                      <section>
+                        <h5 class="kicker">On the timeline</h5>
+                        <ul class="tl-links">
+                          {related.map((m) => <li><span>{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a></li>)}
+                        </ul>
+                      </section>
+                    )}
+                    <SourceList refs={p.data.sources} />
+                  </aside>
+                </div>
+                <CiteBox title={p.data.name} anchor={`person-${p.id}`} />
+              </div>
+            </>
           ))}
         </div>
       </section>
     ))}
-
-    {personBlocks.map(({ p, Content, related }) => (
-      <article class="person prose" id={`person-${p.id}`}>
-        <p class="kicker">{membershipLabels[p.data.membership]}</p>
-        <h3 class="person-name">{p.data.name}</h3>
-        <p class="sub">{p.data.years}{p.data.years && p.data.role && " · "}{p.data.role}</p>
-        <Badge status={p.data.status} />
-        <figure class="photo-needed portrait">
-          <div class="frame"><span>Portrait wanted</span></div>
-        </figure>
-        <Content />
-        {related.length > 0 && (
-          <section>
-            <h4>On the timeline</h4>
-            <ul class="tl">
-              {related.map((m) => <li><span>{m.data.dateLabel}</span> <a href={`#${m.id}`}>{m.data.title}</a></li>)}
-            </ul>
-          </section>
-        )}
-        <SourceList refs={p.data.sources} />
-        <CiteBox title={p.data.name} anchor={`person-${p.id}`} />
-        <p class="back"><a href="#people">↑ All people</a></p>
-      </article>
-    ))}
   </section>
 
-  <!-- ================= Sources ================= -->
-  <section class="wrap page-section prose-section" id="sources">
-    <p class="kicker">Sources</p>
-    <h2 class="section-title">Sources & research leads</h2>
-    <p class="lede">Every claim on this site should trace back to something listed here.</p>
-    <p class="status">Timeline: <strong>{counts.sourced}</strong> entries sourced · <strong>{counts.conflicting}</strong> where sources disagree · <strong>{counts.unverified}</strong> still need a source.</p>
+  <!-- ================= About · Sources · Research desk (one tabbed section) ================= -->
+  <section class="wrap page-section info" id="info" aria-label="About this project">
+    <div class="info-tabs" role="tablist" aria-label="About this project">
+      <button type="button" role="tab" id="tab-about" aria-controls="about" aria-selected="true">About &amp; Contribute</button>
+      <button type="button" role="tab" id="tab-sources" aria-controls="sources" aria-selected="false" tabindex="-1">Sources</button>
+      <button type="button" role="tab" id="tab-research" aria-controls="research" aria-selected="false" tabindex="-1">Research desk</button>
+    </div>
 
-    {Object.entries(kinds).map(([k, label]) => {
-      const list = sources.filter((s) => s.data.kind === k);
-      return list.length > 0 && (
+    <div class="info-panel prose-section active" id="about" role="tabpanel" aria-labelledby="tab-about">
+      <p class="kicker">About</p>
+      <h2 class="section-title">A living history</h2>
+      <p class="lede">This site gathers what is known about the Wy'east Climbers, the small Portland club that put up new routes on Mount Hood in the 1930s and helped found the Mount Hood Ski Patrol, and keeps that record growing.</p>
+
+      <h3>What we're doing</h3>
+      <ul>
+        <li><strong>Recording milestones</strong> on a timeline, with every entry cited and marked by how well it's established.</li>
+              <li><strong>Remembering the people</strong>: members, friends, rivals and one remarkable dog.</li>
+        <li><strong>Preserving material</strong> that survives in family collections, before it's lost.</li>
+      </ul>
+
+      <h3>Standing on Ric Conrad's shoulders</h3>
+      <p>Ric Conrad's <cite>Mount Hood: Adventures of the Wy'east Climbers, 1930–1942</cite> (Kahuna Books, 2014) is the essential history of the club. It is built on interviews with surviving members and years in the archives. This site is not a substitute for it. We summarize and cite it and point readers to it. Please buy the book, available from the Mount Hood Museum, the Oregon Historical Society and booksellers.</p>
+
+      <h3 id="contribute">Contribute</h3>
+      <p>Was someone in your family a Wy'easter? Do you have photographs, letters, climbing logs, issues of the <em>Wy'east Bulletin</em>, or a correction? We'd love to hear from you.</p>
+      <p><a class="btn" href={contactHref()}>{contactLabel()}</a></p>
+      <p>When you share material, tell us:</p>
+      <ul>
+        <li>who is pictured or mentioned, and roughly when and where;</li>
+        <li>who took the photograph, if known;</li>
+        <li>whether you're happy for it to appear on the site, and how you'd like it credited.</li>
+      </ul>
+      <p>We would much rather scan and return originals than keep them, and we can work from good phone photos.</p>
+      <p>Researchers: the <a href="#research">Research desk</a> lists every open question on the site.</p>
+
+      <h3>Images and permissions</h3>
+      <p>Photographs appear only with permission from whoever holds the rights, and are always credited.</p>
+
+      <h3>How entries are marked</h3>
+      <dl class="key">
+        <dt><span class="badge sourced">✓ Sourced</span></dt><dd>Backed by at least one cited source.</dd>
+        <dt><span class="badge conflicting">≠ Sources disagree</span></dt><dd>Sources conflict, and the entry explains how.</dd>
+      </dl>
+    </div>
+
+    <div class="info-panel prose-section" id="sources" role="tabpanel" aria-labelledby="tab-sources">
+      <p class="kicker">Sources</p>
+      <h2 class="section-title">Sources & research leads</h2>
+      <p class="lede">Every claim on this site should trace back to something listed here.</p>
+      <p class="status">Timeline: <strong>{counts.sourced}</strong> entries sourced · <strong>{counts.conflicting}</strong> where sources disagree.</p>
+
+      {Object.entries(kinds).map(([k, label]) => {
+        const list = sources.filter((s) => s.data.kind === k);
+        return list.length > 0 && (
+          <section>
+            <h3>{label}</h3>
+            <ul class="bib">
+              {list.map((s) => (
+                <li id={`source-${s.id}`}>
+                  {s.data.author && <>{s.data.author}. </>}
+                  {s.data.url ? <a href={s.data.url} rel="noopener">{s.data.title}</a> : <cite>{s.data.title}</cite>}
+                  {s.data.publisher && <>. {s.data.publisher}</>}{s.data.year && <>, {s.data.year}</>}.
+                  <span class="used">Cited {usage(s.id)}×</span>
+                  {s.data.note && <p class="note">{s.data.note}</p>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+
+      <section>
+        <h3>Archives to consult</h3>
+        <p>Most of the club's primary record sits in a few collections. Contacting them is the next step for verification and for photograph permissions.</p>
+        <ul class="bib">
+          <li><strong>Mazama Library & Historical Collections</strong> (Portland). Holds the Mazama Annuals, summit registers and many 1930s Mount Hood photographs, including Wy'east-era images by Joe Leuthold and Jim Harlow.</li>
+          <li><strong>Oregon Historical Society Research Library</strong>. The <em>Oregonian</em> and <em>Oregon Journal</em> archives, plus photograph collections.</li>
+          <li><strong>Mt. Hood Ski Patrol</strong>. Patrol records and early photographs from 1937–38.</li>
+          <li><strong>Mount Hood Museum</strong> (Government Camp). Local history collections and the Ranger story.</li>
+          <li><strong>The <em>Wy'east Bulletin</em></strong>. The club's own newsletter, cited by Conrad. Where the surviving copies are is unknown.</li>
+          <li><strong>Families of members</strong>. Letters, logbooks, photographs and oral histories.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="info-panel" id="research" role="tabpanel" aria-labelledby="tab-research">
+      <p class="kicker">For contributors</p>
+      <h2 class="section-title">Research desk</h2>
+      <p class="lede">Everything still open on the site, collected in one place and regenerated each time the site is built. If you can answer any of these, please <a href="#contribute">get in touch</a>.</p>
+
+      <dl class="stats">
+        <div><dt>Sources disagree</dt><dd>{conflicting.length}</dd></div>
+        <div><dt>Not yet dated</dt><dd>{undated.length}</dd></div>
+        <div><dt>Membership to confirm</dt><dd>{probable.length}</dd></div>
+      </dl>
+
+      <div class="cols">
         <section>
-          <h3>{label}</h3>
-          <ul class="bib">
-            {list.map((s) => (
-              <li id={`source-${s.id}`}>
-                {s.data.author && <>{s.data.author}. </>}
-                {s.data.url ? <a href={s.data.url} rel="noopener">{s.data.title}</a> : <cite>{s.data.title}</cite>}
-                {s.data.publisher && <>. {s.data.publisher}</>}{s.data.year && <>, {s.data.year}</>}.
-                <span class="used">Cited {usage(s.id)}×</span>
-                {s.data.note && <p class="note">{s.data.note}</p>}
+          <h3>Where sources disagree</h3>
+          <ul class="qs">
+            {conflicting.map((m) => (
+              <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a> <Badge status="conflicting" /></li>
+            ))}
+          </ul>
+
+          <h3>Events we can't yet date</h3>
+          <ul class="qs">
+            {undated.map((m) => (
+              <li><strong class="q-title">{m.data.title}</strong>{toVerify(m.body) && <p>{toVerify(m.body)}</p>}</li>
+            ))}
+          </ul>
+
+          {otherNotes.length > 0 && (
+            <>
+              <h3>Other details to check</h3>
+              <ul class="qs">
+                {otherNotes.map(({ m, note }) => (
+                  <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a><p>{note}</p></li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
+        <section>
+          <h3>People</h3>
+          <h4>Membership to confirm</h4>
+          <ul class="qs">{probable.map((p) => <li><a href={`#person-${p.id}`}>{p.data.name}</a></li>)}</ul>
+          <h4>Profiles needed</h4>
+          <ul class="qs">{thinProfiles.map((p) => <li><a href={`#person-${p.id}`}>{p.data.name}</a></li>)}</ul>
+
+          <h3 id="permissions">Photo permissions</h3>
+          <p class="small">{byStatus("granted")} granted · {byStatus("requested")} requested · {byStatus("wanted")} not yet requested</p>
+          <ul class="perm">
+            {permissions.map((p) => (
+              <li class={p.data.status}>
+                <span class="pill">{p.data.status}</span>
+                <strong>{p.data.item}</strong>
+                <span class="holder">{p.data.holder}</span>
               </li>
             ))}
           </ul>
+          <p class="small">Kept in <code>src/content/permissions.yaml</code>.</p>
         </section>
-      );
-    })}
-
-    <section>
-      <h3>Archives to consult</h3>
-      <p>Most of the club's primary record sits in a few collections. Contacting them is the next step for verification and for photograph permissions.</p>
-      <ul class="bib">
-        <li><strong>Mazama Library & Historical Collections</strong> (Portland). Holds the Mazama Annuals, summit registers and many 1930s Mount Hood photographs, including Wy'east-era images by Joe Leuthold and Jim Harlow.</li>
-        <li><strong>Oregon Historical Society Research Library</strong>. The <em>Oregonian</em> and <em>Oregon Journal</em> archives, plus photograph collections.</li>
-        <li><strong>Mt. Hood Ski Patrol</strong>. Patrol records and early photographs from 1937–38.</li>
-        <li><strong>Mount Hood Museum</strong> (Government Camp). Local history collections and the Ranger story.</li>
-        <li><strong>The <em>Wy'east Bulletin</em></strong>. The club's own newsletter, cited by Conrad. Where the surviving copies are is unknown.</li>
-        <li><strong>Families of members</strong>. Letters, logbooks, photographs and oral histories.</li>
-      </ul>
-    </section>
-  </section>
-
-  <!-- ================= Research desk ================= -->
-  <section class="wrap page-section" id="research">
-    <p class="kicker">For contributors</p>
-    <h2 class="section-title">Research desk</h2>
-    <p class="lede">Everything still open on the site, collected in one place and regenerated each time the site is built. If you can answer any of these, please <a href="#contribute">get in touch</a>.</p>
-
-    <dl class="stats">
-      <div><dt>Sources disagree</dt><dd>{conflicting.length}</dd></div>
-      <div><dt>Need a source</dt><dd>{unverified.length}</dd></div>
-      <div><dt>Not yet dated</dt><dd>{undated.length}</dd></div>
-      <div><dt>Membership to confirm</dt><dd>{probable.length}</dd></div>
-      <div><dt>Photographs wanted</dt><dd>{photoSlots}</dd></div>
-    </dl>
-
-    <div class="cols">
-      <section>
-        <h3>Where sources disagree</h3>
-        <ul class="qs">
-          {conflicting.map((m) => (
-            <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a> <Badge status="conflicting" /></li>
-          ))}
-        </ul>
-
-        <h3>Claims that need a source</h3>
-        <ul class="qs">
-          {unverified.map((m) => (
-            <li>
-              <span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a>
-              {toVerify(m.body) && <p>{toVerify(m.body)}</p>}
-            </li>
-          ))}
-        </ul>
-
-        <h3>Events we can't yet date</h3>
-        <ul class="qs">
-          {undated.map((m) => (
-            <li><a href={`#${m.id}`}>{m.data.title}</a>{toVerify(m.body) && <p>{toVerify(m.body)}</p>}</li>
-          ))}
-        </ul>
-
-        {otherNotes.length > 0 && (
-          <>
-            <h3>Other details to check</h3>
-            <ul class="qs">
-              {otherNotes.map(({ m, note }) => (
-                <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a><p>{note}</p></li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
-
-      <section>
-        <h3>People</h3>
-        <h4>Membership to confirm</h4>
-        <ul class="qs">{probable.map((p) => <li><a href={`#person-${p.id}`}>{p.data.name}</a></li>)}</ul>
-        <h4>Profiles needed</h4>
-        <ul class="qs">{thinProfiles.map((p) => <li><a href={`#person-${p.id}`}>{p.data.name}</a></li>)}</ul>
-
-        <h3 id="permissions">Photo permissions</h3>
-        <p class="small">{byStatus("granted")} granted · {byStatus("requested")} requested · {byStatus("wanted")} not yet requested</p>
-        <ul class="perm">
-          {permissions.map((p) => (
-            <li class={p.data.status}>
-              <span class="pill">{p.data.status}</span>
-              <strong>{p.data.item}</strong>
-              <span class="holder">{p.data.holder}</span>
-            </li>
-          ))}
-        </ul>
-        <p class="small">Kept in <code>src/content/permissions.yaml</code>.</p>
-      </section>
+      </div>
     </div>
-  </section>
-
-  <!-- ================= About ================= -->
-  <section class="wrap page-section prose-section" id="about">
-    <p class="kicker">About</p>
-    <h2 class="section-title">A living history</h2>
-    <p class="lede">This site gathers what is known about the Wy'east Climbers, the small Portland club that put up new routes on Mount Hood in the 1930s and helped found the Mount Hood Ski Patrol, and keeps that record growing.</p>
-
-    <h3>What we're doing</h3>
-    <ul>
-      <li><strong>Recording milestones</strong> on a timeline, with every entry cited and marked by how well it's established.</li>
-      <li><strong>Telling the stories</strong> in long-form exhibits.</li>
-      <li><strong>Remembering the people</strong>: members, friends, rivals and one remarkable dog.</li>
-      <li><strong>Preserving material</strong> that survives in family collections, before it's lost.</li>
-    </ul>
-
-    <h3>Standing on Ric Conrad's shoulders</h3>
-    <p>Ric Conrad's <cite>Mount Hood: Adventures of the Wy'east Climbers, 1930–1942</cite> (Kahuna Books, 2014) is the essential history of the club. It is built on interviews with surviving members and years in the archives. This site is not a substitute for it. We summarize and cite it and point readers to it. Please buy the book, available from the Mount Hood Museum, the Oregon Historical Society and booksellers.</p>
-
-    <h3 id="contribute">Contribute</h3>
-    <p>Was someone in your family a Wy'easter? Do you have photographs, letters, climbing logs, issues of the <em>Wy'east Bulletin</em>, or a correction? We'd love to hear from you.</p>
-    <p><a class="btn" href={`mailto:${email}?subject=Wy'east%20Climbers%20history`}>Email {email}</a></p>
-    <p>When you share material, tell us:</p>
-    <ul>
-      <li>who is pictured or mentioned, and roughly when and where;</li>
-      <li>who took the photograph, if known;</li>
-      <li>whether you're happy for it to appear on the site, and how you'd like it credited.</li>
-    </ul>
-    <p>We would much rather scan and return originals than keep them, and we can work from good phone photos.</p>
-    <p>Researchers: the <a href="#research">Research desk</a> lists every open question on the site, along with the photographs we're still seeking.</p>
-
-    <h3>Images and permissions</h3>
-    <p>Photographs appear only with permission from whoever holds the rights, and are always credited. Gray "photograph wanted" frames mark where we know a picture exists, or ought to, and are still seeking it.</p>
-
-    <h3>How entries are marked</h3>
-    <dl class="key">
-      <dt><span class="badge sourced">✓ Sourced</span></dt><dd>Backed by at least one cited source.</dd>
-      <dt><span class="badge conflicting">≠ Sources disagree</span></dt><dd>Sources conflict, and the entry explains how.</dd>
-      <dt><span class="badge unverified">? Needs a source</span></dt><dd>Plausible but not yet confirmed. Treat with care.</dd>
-    </dl>
   </section>
 </Base>
 
 <style>
   /* intro */
   .hero { margin-top: -2.5rem; }
-  .intro { padding-top: 1.5rem; }
+  .intro { padding-top: 2.5rem; }
   .ctas { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
   .toc { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 2rem; padding: 1rem 1.25rem; background: var(--paper-2); border-radius: 6px; font: 600 0.92rem/1.5 var(--sans); }
   .toc .sub { font-weight: 400; color: var(--ink-soft); }
@@ -392,38 +355,157 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
   .back { font: 600 0.9rem/1.4 var(--sans); margin-top: 1.5rem; }
 
   /* timeline */
-  .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1rem; }
-  .filters button { font: 500 0.85rem/1 var(--sans); padding: 0.55em 0.9em; border-radius: 999px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
-  .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .decades { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font: 600 0.9rem/1.6 var(--sans); }
-  .decade-title { position: sticky; top: 0; background: var(--paper); padding: 0.5rem 0; z-index: 1; margin-bottom: 0; font-size: 1.6rem; }
+  .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1.25rem; }
+  .filters button { display: inline-flex; align-items: center; gap: 0.45em; font: 500 0.85rem/1 var(--sans); padding: 0.55em 0.9em; border-radius: 999px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
+  .filters button i { width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--cat); }
+  .filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
   .milestones { list-style: none; margin: 0; padding: 0; }
   .note { color: var(--ink-soft); font-size: 1rem; }
-  .decade.empty { display: none; }
 
-  /* exhibits */
-  .exhibit { margin-top: 4rem; padding-top: 2.5rem; border-top: 1px solid var(--rule); }
-  .exhibit header { margin-bottom: 2rem; }
-  .exhibit-title { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 0.5rem; }
-  .layout { display: grid; grid-template-columns: minmax(0, var(--measure)) minmax(0, 18rem); gap: 3.5rem; }
-  .side section { position: sticky; top: 1.5rem; border-left: 1px solid var(--rule); padding-left: 1.25rem; }
-  .side ol { list-style: none; margin: 0; padding: 0; font: 0.9rem/1.4 var(--sans); }
-  .side li { margin-bottom: 0.9rem; }
-  .side li span { display: block; color: var(--ink-soft); font-size: 0.8rem; }
-  .body :global(h2) { margin-top: 2.75rem; font-size: 1.45rem; }
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; gap: 0; }
-    .side section { position: static; border-left: 0; border-top: 1px solid var(--rule); padding: 1.5rem 0 0; margin-top: 2rem; }
+  /* category colours */
+  .cat-club, .f-club { --cat: var(--accent); }
+  .cat-climb, .f-climb { --cat: var(--rust); }
+  .cat-rescue, .f-rescue { --cat: var(--ok); }
+  .cat-context, .f-context { --cat: var(--warn); }
+  .cat-legacy, .f-legacy { --cat: var(--ink-soft); }
+
+  /* the horizontal track only exists when script can drive it */
+  .tl-track-wrap, .tl-pager, .tl-era-key { display: none; }
+  :global(.js) .tl-track-wrap { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; }
+  :global(.js) .tl-pager { display: flex; }
+  :global(.js) .tl-era-key { display: flex; }
+  :global(.js) .tl-panel :global(.milestone:not(.current)) { display: none; }
+
+  .tl-track {
+    display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x proximity; scroll-behavior: smooth;
+    padding: 0.5rem 0 0.75rem; scrollbar-width: thin; outline: none;
+  }
+  .tl-group { flex: none; display: flex; flex-direction: column; position: relative; padding-right: 1.25rem; }
+  .tl-decade { font: 600 1.5rem/1 var(--display); color: var(--ink); padding: 0 0 0.6rem 0.25rem; position: sticky; left: 0; }
+  .tl-stops { display: flex; position: relative; }
+  /* the line */
+  /* the line: one segment per event, so each stretch can be styled; the last event in a
+     decade carries it across the gap to the next */
+  .tl-stop::before { content: ""; position: absolute; left: 0; right: 0; top: 2.15rem; height: 2px; background: var(--rule); }
+  .tl-stops > .tl-stop:last-child::before { right: -1.25rem; }
+  .tl-stop.in-era::before { background: var(--accent); height: 3px; top: 2.1rem; }
+  /* before the club's founding: dashed */
+  .tl-stop.pre::before { background: repeating-linear-gradient(to right, var(--ink-soft) 0 7px, transparent 7px 13px); opacity: 0.7; }
+
+  .tl-stop {
+    position: relative; flex: none; width: 10.5rem; padding: 0 0.6rem 0.4rem 0.25rem; scroll-snap-align: center;
+    display: grid; grid-template-rows: 1.6rem 1.1rem auto; text-align: left; cursor: pointer;
+    background: none; border: 0; color: var(--ink); font: inherit;
+  }
+  .tl-date { font: 600 0.78rem/1.2 var(--sans); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; align-self: end; padding-bottom: 0.35rem; }
+  .tl-dot {
+    width: 0.95rem; height: 0.95rem; border-radius: 50%; background: var(--paper); border: 3px solid var(--cat);
+    position: relative; z-index: 1; transition: transform 0.15s, background 0.15s;
+  }
+  .tl-title {
+    margin-top: 0.55rem; font: 500 0.88rem/1.3 var(--sans); color: var(--ink-soft);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .tl-stop:hover .tl-dot { transform: scale(1.25); }
+  .tl-stop:hover .tl-title { color: var(--ink); }
+  .tl-stop[aria-selected="true"] .tl-dot { background: var(--cat); transform: scale(1.45); box-shadow: 0 0 0 4px color-mix(in srgb, var(--cat) 25%, transparent); }
+  .tl-stop[aria-selected="true"] .tl-title { color: var(--ink); font-weight: 650; }
+  .tl-stop[aria-selected="true"] .tl-date { color: var(--cat); }
+  .tl-stop:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+  .tl-stop.filtered { display: none; }
+  .tl-group.empty { display: none; }
+
+  .tl-scroll { width: 2.25rem; height: 2.25rem; border-radius: 50%; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font: 600 1.3rem/1 var(--sans); cursor: pointer; }
+  .tl-scroll:hover { border-color: var(--ink); }
+  .tl-era-key { align-items: center; gap: 0.5rem; margin: 0.25rem 0 0 2.75rem; font: 0.8rem/1.3 var(--sans); color: var(--ink-soft); }
+  .tl-era-key span { width: 1.5rem; height: 3px; background: var(--accent); }
+  .tl-era-key .k-pre { height: 2px; background: repeating-linear-gradient(to right, var(--ink-soft) 0 5px, transparent 5px 9px); opacity: 0.7; }
+  .tl-era-key .k-era { margin-left: 1rem; }
+
+  .tl-panel { margin-top: 1.25rem; }
+  :global(.js) .tl-panel { border: 1px solid var(--rule); border-radius: 8px; padding: 0 1.5rem; background: color-mix(in srgb, var(--paper-2) 45%, var(--paper)); }
+  :global(.js) .tl-panel :global(.milestone) { border-top: 0; }
+  :global(.js) .tl-panel :global(.milestone.current) { animation: tl-in 0.3s ease; }
+  @keyframes tl-in { from { opacity: 0; translate: 0 6px; } }
+  .tl-pager { justify-content: space-between; align-items: center; gap: 1rem; padding: 0.9rem 0 1.1rem; border-top: 1px solid var(--rule); }
+  .tl-step { font: 600 0.88rem/1 var(--sans); padding: 0.6em 0.9em; border-radius: 6px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .tl-step:hover:not(:disabled) { border-color: var(--ink); }
+  .tl-step:disabled { opacity: 0.4; cursor: default; }
+  .tl-count { font: 0.82rem/1 var(--sans); color: var(--ink-soft); }
+  @media (max-width: 640px) {
+    .tl-scroll { display: none; }
+    :global(.js) .tl-track-wrap { grid-template-columns: 1fr; }
+    .tl-stop { width: 8.5rem; }
+    :global(.js) .tl-panel { padding: 0 1rem; }
+    .tl-era-key { margin-left: 0; }
+  }
+  @media print {
+    .tl-track-wrap, .tl-pager, .tl-era-key { display: none !important; }
+    .tl-panel :global(.milestone) { display: grid !important; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tl-track { scroll-behavior: auto; }
+    :global(.js) .tl-panel :global(.milestone.current) { animation: none; }
   }
 
-  /* people */
-  .person { margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid var(--rule); }
-  .person-name { font-size: 2rem; margin: 0 0 0.4rem; }
-  .sub { font: 1rem/1.4 var(--sans); color: var(--ink-soft); margin-bottom: 0.75rem; }
-  .portrait { max-width: 16rem; }
-  .portrait .frame { aspect-ratio: 4 / 5; }
-  .tl { padding-left: 1.1rem; }
-  .tl span { font: 600 0.85rem/1 var(--sans); color: var(--ink-soft); }
+  /* people: cards that open into a bio directly below their row */
+  .people-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1rem; grid-auto-flow: dense; /* later cards backfill the row above an open bio */
+  }
+  .pcard { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .pcard .kicker { margin: 0; }
+  .pcard-name { font: 600 1.2rem/1.2 var(--display); color: var(--ink); }
+  .pcard-role { font-size: 1rem; color: var(--ink-soft); }
+  .pcard-more { margin-top: auto; padding-top: 0.5rem; font: 600 0.82rem/1 var(--sans); color: var(--accent); }
+  .pcard-more::after { content: " ↓"; }
+  .pcard .close-label { display: none; }
+  .pcard[aria-expanded="true"] { border-color: var(--ink); background: var(--paper-2); transform: none; box-shadow: inset 0 -3px 0 var(--accent); }
+  .pcard[aria-expanded="true"] .open-label { display: none; }
+  .pcard[aria-expanded="true"] .close-label { display: inline; }
+  .pcard[aria-expanded="true"] .pcard-more::after { content: " ↑"; }
+
+  .pbio { grid-column: 1 / -1; border: 1px solid var(--ink); border-radius: 8px; padding: 1.5rem 1.75rem 1.75rem; background: var(--paper); margin-bottom: 0.75rem; }
+  :global(.js) .pbio:not(.open) { display: none; }
+  .pbio.open { animation: tl-in 0.3s ease; }
+  .pbio-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1.25rem; }
+  .pbio-head .kicker { margin-bottom: 0.4rem; }
+  .person-name { font-size: 1.9rem; margin: 0 0 0.35rem; }
+  .sub { font: 1rem/1.4 var(--sans); color: var(--ink-soft); margin-bottom: 0.6rem; }
+  .pbio-close { flex: none; width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-soft); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+  .pbio-close:hover { border-color: var(--ink); color: var(--ink); }
+  .pbio-body { display: grid; grid-template-columns: minmax(0, var(--measure)) minmax(0, 16rem); gap: 2.5rem; }
+  .pbio-body aside { font: 0.9rem/1.45 var(--sans); }
+  .pbio-body aside h5 { margin: 0 0 0.6rem; }
+  .tl-links { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+  .tl-links li { margin-bottom: 0.7rem; }
+  .tl-links span { display: block; font-size: 0.78rem; color: var(--ink-soft); }
+  .pbio :global(.cite) { margin-top: 1.5rem; max-width: var(--measure); }
+  :global(html:not(.js)) .pcard-more { display: none; }
+  @media (max-width: 860px) { .pbio-body { grid-template-columns: 1fr; gap: 1rem; } .pbio { padding: 1.25rem; } }
+
+  /* about · sources · research desk tabs */
+  .info-tabs { display: none; }
+  /* pills in the same style as the map's tip: ink outline, offset ink shadow */
+  :global(.js) .info-tabs { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 2rem; }
+  .info-tabs button {
+    font: 600 0.85rem/1 var(--sans); color: var(--ink); background: var(--paper); cursor: pointer;
+    border: 1.5px solid var(--ink); border-radius: 999px; box-shadow: 2px 2px 0 var(--ink);
+    padding: 0.6rem 1rem; transition: background 0.15s, translate 0.1s, box-shadow 0.1s;
+  }
+  .info-tabs button:hover { background: var(--paper-2); }
+  .info-tabs button:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+  .info-tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+  .info-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .info-tabs button { transition: none; } }
+  :global(.js) .info-panel:not(.active) { display: none; }
+  /* landing on #sources etc. keeps the tab bar in view */
+  :global(.js) .info .info-panel { scroll-margin-top: 5.75rem; }
+  :global(.js) .info-panel.active { animation: tl-in 0.3s ease; }
+  .info-panel + .info-panel { margin-top: 4rem; }
+  :global(.js) .info-panel + .info-panel { margin-top: 0; }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .info-panel.active { animation: none; } }
+  @media print { .info-tabs { display: none !important; } .info-panel { display: block !important; } }
 
   /* sources */
   .status { font: 0.95rem/1.5 var(--sans); background: var(--paper-2); padding: 0.75rem 1rem; border-radius: 4px; }
@@ -441,6 +523,7 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
   .cols h3:first-child { margin-top: 0; }
   .qs { list-style: none; padding: 0; margin: 0; font: 0.95rem/1.45 var(--sans); }
   .qs li { padding: 0.65rem 0; border-top: 1px solid var(--rule); }
+  .qs .q-title { font-weight: 600; }
   .qs .when { display: block; font-size: 0.78rem; color: var(--ink-soft); }
   .qs p { margin: 0.25rem 0 0; color: var(--ink-soft); font-size: 0.88rem; }
   .qs p::first-letter { text-transform: uppercase; }
@@ -463,45 +546,213 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
 </style>
 
 <script>
-  // Timeline category filters
-  const buttons = document.querySelectorAll<HTMLButtonElement>(".filters button");
-  buttons.forEach((b) =>
+  let inView: Element | null = null; // section in view, for nav highlighting
+
+  // Highlight the nav link for the section in view. Tab panels are watched through their
+  // shared section, and the link for whichever tab is showing gets highlighted.
+  const navLinks = [...document.querySelectorAll<HTMLAnchorElement>(".nav a[href^='/#']")];
+  const watched = new Set<Element>();
+  for (const a of navLinks) {
+    const el = document.getElementById(a.hash.slice(1));
+    if (el) watched.add(el.closest(".info") ?? el);
+  }
+  function markNav() {
+    const id = inView?.matches(".info") ? activePanel() : inView?.id;
+    navLinks.forEach((a) => (a.hash === `#${id}` ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current")));
+  }
+  const activePanel = () => document.querySelector<HTMLElement>(".info-panel.active")?.id;
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) if (e.isIntersecting) inView = e.target;
+      markNav();
+    },
+    { rootMargin: "-40% 0px -55% 0px" },
+  );
+  watched.forEach((s) => io.observe(s));
+
+
+  // ---------------- Timeline: horizontal track with one selected event ----------------
+  const track = document.querySelector<HTMLElement>(".tl-track")!;
+  const stops = [...track.querySelectorAll<HTMLButtonElement>(".tl-stop")];
+  const items = new Map([...document.querySelectorAll<HTMLElement>(".tl-panel .milestone")].map((li) => [li.dataset.id!, li]));
+  const filterButtons = [...document.querySelectorAll<HTMLButtonElement>(".filters button[data-filter]")];
+  let category = "all";
+  const count = document.querySelector<HTMLElement>(".tl-count")!;
+  const [stepBack, stepNext] = [...document.querySelectorAll<HTMLButtonElement>(".tl-step")];
+  const visibleStops = () => stops.filter((s) => !s.classList.contains("filtered"));
+  let current: string | null = null;
+
+  // True while the track glides to a stop we picked, so scrolling past other stops doesn't select them.
+  let autoScroll = false;
+  let autoScrollTimer = 0;
+  const select = (id: string, opts: { focus?: boolean; updateHash?: boolean; centre?: boolean } = {}) => {
+    const stop = stops.find((s) => s.dataset.id === id);
+    if (!stop) return;
+    current = id;
+    for (const s of stops) {
+      const on = s === stop;
+      s.setAttribute("aria-selected", String(on));
+      s.tabIndex = on ? 0 : -1;
+    }
+    for (const [key, li] of items) li.classList.toggle("current", key === id);
+    // Centre the stop in the track without moving the page (measured on screen; offsetLeft is
+    // relative to its decade group). Wait a frame so layout changes from the filters have settled.
+    if (opts.centre !== false) requestAnimationFrame(() => {
+      const t = track.getBoundingClientRect(), r = stop.getBoundingClientRect();
+      const left = track.scrollLeft + (r.left - t.left) + r.width / 2 - t.width / 2;
+      if (Math.abs(left - track.scrollLeft) < 2) return;
+      autoScroll = true;
+      clearTimeout(autoScrollTimer);
+      autoScrollTimer = window.setTimeout(() => (autoScroll = false), 1000); // in case scrollend never fires
+      track.scrollTo({ left });
+    });
+    if (opts.focus) stop.focus({ preventScroll: true });
+    const vis = visibleStops();
+    const i = vis.indexOf(stop);
+    stepBack.disabled = i <= 0;
+    stepNext.disabled = i >= vis.length - 1;
+    count.textContent = `${i + 1} of ${vis.length}`;
+    if (opts.updateHash) history.replaceState(null, "", `#${id}`);
+  };
+  const step = (d: number) => {
+    const vis = visibleStops();
+    const i = vis.findIndex((s) => s.dataset.id === current);
+    const next = vis[Math.min(Math.max(i + d, 0), vis.length - 1)];
+    if (next) select(next.dataset.id!, { focus: true, updateHash: true });
+  };
+
+  stops.forEach((s) => s.addEventListener("click", () => select(s.dataset.id!, { updateHash: true })));
+
+  // Scrolling the track (swipe, trackpad, scrollbar, the ‹ › buttons) selects the event nearest
+  // its middle, so the panel below follows along.
+  const centredStop = () => {
+    // the first and last events can't reach the middle, so the ends of the track pick them
+    const vis = visibleStops();
+    if (track.scrollLeft <= 2) return vis[0];
+    if (track.scrollLeft >= track.scrollWidth - track.clientWidth - 2) return vis[vis.length - 1];
+    const t = track.getBoundingClientRect(), mid = t.left + t.width / 2;
+    let best: HTMLButtonElement | null = null, bestD = Infinity;
+    for (const s of vis) {
+      const r = s.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - mid);
+      if (d < bestD) { best = s; bestD = d; }
+    }
+    return best;
+  };
+  let scrollQueued = false, settleTimer = 0;
+  track.addEventListener("scroll", () => {
+    if (autoScroll || scrollQueued) return;
+    scrollQueued = true;
+    requestAnimationFrame(() => {
+      scrollQueued = false;
+      const s = centredStop();
+      if (s && s.dataset.id !== current) select(s.dataset.id!, { centre: false });
+    });
+    clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(() => { if (current) history.replaceState(null, "", `#${current}`); }, 400);
+  }, { passive: true });
+  track.addEventListener("scrollend", () => { autoScroll = false; clearTimeout(autoScrollTimer); });
+  track.addEventListener("keydown", (e) => {
+    const keys: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, Home: -999, End: 999 };
+    if (!(e.key in keys)) return;
+    e.preventDefault();
+    step(keys[e.key]);
+  });
+  stepBack.addEventListener("click", () => step(-1));
+  stepNext.addEventListener("click", () => step(1));
+  document.querySelector(".tl-scroll.prev")!.addEventListener("click", () => track.scrollBy({ left: -track.clientWidth * 0.7 }));
+  document.querySelector(".tl-scroll.next")!.addEventListener("click", () => track.scrollBy({ left: track.clientWidth * 0.7 }));
+
+  // Category filters hide stops; the selection moves to the nearest one still shown.
+  const applyFilters = () => {
+    filterButtons.forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.filter === category)));
+    stops.forEach((s) =>
+      s.classList.toggle("filtered", category !== "all" && s.dataset.category !== category),
+    );
+    track.querySelectorAll<HTMLElement>(".tl-group").forEach((g) => g.classList.toggle("empty", !g.querySelector(".tl-stop:not(.filtered)")));
+    const vis = visibleStops();
+    if (!vis.length) return;
+    if (current && vis.some((s) => s.dataset.id === current)) return select(current);
+    const from = stops.findIndex((s) => s.dataset.id === current);
+    const nearest = vis.reduce((a, s) => (Math.abs(stops.indexOf(s) - from) < Math.abs(stops.indexOf(a) - from) ? s : a));
+    select(nearest.dataset.id!);
+  };
+  filterButtons.forEach((b) => b.addEventListener("click", () => { category = b.dataset.filter!; applyFilters(); }));
+
+  current = stops.find((s) => s.dataset.id === "1930-founding")?.dataset.id ?? stops[0].dataset.id!;
+  applyFilters(); // selects the default
+
+  // ---------------- People: one bio open at a time, below its card's row ----------------
+  const cards = [...document.querySelectorAll<HTMLButtonElement>(".pcard")];
+  const openBio = (card: HTMLButtonElement | null, opts: { scroll?: boolean } = {}) => {
+    for (const c of cards) {
+      const on = c === card && c.getAttribute("aria-expanded") !== "true";
+      c.setAttribute("aria-expanded", String(on));
+      document.getElementById(c.getAttribute("aria-controls")!)!.classList.toggle("open", on);
+    }
+    if (card && opts.scroll) card.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
+  cards.forEach((c) => c.addEventListener("click", () => openBio(c)));
+  document.querySelectorAll<HTMLButtonElement>(".pbio-close").forEach((b) =>
     b.addEventListener("click", () => {
-      const f = b.dataset.filter;
-      buttons.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      document.querySelectorAll<HTMLElement>(".milestone").forEach((li) => {
-        li.hidden = f !== "all" && li.dataset.category !== f;
-      });
-      document.querySelectorAll<HTMLElement>(".decade").forEach((s) => {
-        s.classList.toggle("empty", !s.querySelector(".milestone:not([hidden])"));
-      });
+      const card = document.querySelector<HTMLButtonElement>(`[aria-controls="${b.closest(".pbio")!.id}"]`)!;
+      openBio(card); // toggles it closed
+      card.focus();
     }),
   );
 
-  // Make sure a deep link to a filtered-out milestone still shows it.
+  // ---------------- About · Sources · Research desk tabs ----------------
+  const infoTabs = [...document.querySelectorAll<HTMLButtonElement>(".info-tabs [role=tab]")];
+  const showPanel = (id: string, opts: { focus?: boolean; updateHash?: boolean } = {}) => {
+    for (const t of infoTabs) {
+      const on = t.getAttribute("aria-controls") === id;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")!)!.classList.toggle("active", on);
+      if (on && opts.focus) t.focus();
+    }
+    if (opts.updateHash) history.replaceState(null, "", `#${id}`);
+    markNav();
+  };
+  infoTabs.forEach((t, i) => {
+    t.addEventListener("click", () => showPanel(t.getAttribute("aria-controls")!, { updateHash: true }));
+    t.addEventListener("keydown", (e) => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      const next = infoTabs[(i + d + infoTabs.length) % infoTabs.length];
+      showPanel(next.getAttribute("aria-controls")!, { focus: true, updateHash: true });
+    });
+  });
+  // ---------------- Deep links (#milestone-id, #person-id, or anything inside them) ----------------
   const reveal = () => {
     if (!location.hash) return;
     const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-    if (el?.closest(".milestone[hidden]")) buttons[0]?.click();
+    if (!el) return;
+    const li = el.closest<HTMLElement>(".milestone");
+    if (li?.dataset.id) {
+      const stop = stops.find((s) => s.dataset.id === li.dataset.id);
+      if (stop?.classList.contains("filtered")) {
+        category = "all";
+        applyFilters();
+      }
+      select(li.dataset.id);
+      document.getElementById("timeline")!.scrollIntoView();
+      return;
+    }
+    const panel = el.closest<HTMLElement>(".info-panel");
+    if (panel) {
+      if (!panel.classList.contains("active")) showPanel(panel.id);
+      el.scrollIntoView();
+      return;
+    }
+    const card = el.matches(".pcard") ? (el as HTMLButtonElement)
+      : el.closest(".pbio") ? document.querySelector<HTMLButtonElement>(`[aria-controls="${el.closest(".pbio")!.id}"]`) : null;
+    if (card) {
+      if (card.getAttribute("aria-expanded") !== "true") openBio(card);
+      card.scrollIntoView();
+    }
   };
   addEventListener("hashchange", reveal);
   reveal();
 
-  // Highlight the nav link for the section in view.
-  const navLinks = [...document.querySelectorAll<HTMLAnchorElement>(".nav a[href^='/#']")];
-  const sections = navLinks
-    .map((a) => document.getElementById(a.hash.slice(1)))
-    .filter((s): s is HTMLElement => !!s);
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        navLinks.forEach((a) =>
-          a.hash === `#${e.target.id}` ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current"),
-        );
-      }
-    },
-    { rootMargin: "-40% 0px -55% 0px" },
-  );
-  sections.forEach((s) => io.observe(s));
 </script>

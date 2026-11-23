@@ -1,25 +1,494 @@
 ---
-// Original line illustration of Mount Hood for the homepage.
+// Full-screen stage: an interactive halftone model of Mount Hood (src/scripts/hero3d.ts) with
+// the club's routes, a route list and details on the left, view controls on the right, and
+// the site title. The rest of the page continues below: scrolling over the lower part of the
+// stage (from the top of the site title down) scrolls the page instead of zooming the model.
+// Falls back to the static render in public/hero/ when WebGL isn't available.
+import { getCollection } from "astro:content";
+import { routes, kindLabels } from "../data/routes";
+import landmarks from "../data/landmarks.json";
+import { cardImage, type CardImage } from "../card-images";
+
+// ski trails get their own heading in the list
+const places = landmarks.filter((l) => !("trail" in l));
+const skiTrails = landmarks.filter((l) => "trail" in l);
+
+const order = ["first-ascent", "reopened", "standard"] as const;
+const sorted = [...routes].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+
+// Landmark cards for the details panel, with each source's title and link resolved here.
+const sources = await getCollection("sources");
+// card photos: checked for a free license or a granted permission, and resized (src/card-images.ts)
+const permissions = await getCollection("permissions");
+const granted = (id: string) => permissions.find((p) => p.id === id)?.data.status === "granted";
+const landmarkCards = await Promise.all(landmarks.map(async (l) => ({
+  id: l.id, name: l.name, summary: l.summary, milestone: l.milestone, trail: "trail" in l,
+  sources: l.sources.map((id) => {
+    const s = sources.find((x) => x.id === id)!;
+    return { title: s.data.title, href: s.data.url ?? `#source-${id}` };
+  }),
+  image: await cardImage(l.id, (l as { image?: CardImage }).image, granted),
+})));
+const routeImages = Object.fromEntries(
+  (await Promise.all(routes.map(async (r) => [r.id, await cardImage(r.id, r.image, granted)] as const))).filter(([, img]) => img),
+);
 ---
-<svg class="hero-art" viewBox="0 0 1200 480" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="var(--sky)" />
-      <stop offset="1" stop-color="var(--paper)" />
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="480" fill="url(#sky)" />
-  <g transform="translate(0 60)">
-  <!-- far ridges -->
-  <path d="M0 330 L120 290 L210 312 L330 270 L420 300 L520 282 L600 300 L700 276 L820 304 L930 280 L1040 306 L1200 286 L1200 420 L0 420 Z" fill="var(--rule)" opacity="0.7" />
-  <!-- the mountain -->
-  <path d="M250 360 L470 190 L540 128 L578 82 L600 40 L618 70 L650 112 L700 160 L760 205 L980 360 Z" fill="var(--accent)" />
-  <!-- snow -->
-  <path d="M470 190 L540 128 L578 82 L600 40 L618 70 L650 112 L700 160 L760 205 L728 214 L700 196 L676 224 L648 182 L622 220 L600 170 L580 214 L556 178 L530 218 L508 196 L488 214 Z" fill="var(--snow)" />
-  <!-- near forest -->
-  <path d="M0 420 L0 352 L40 340 L60 300 L80 342 L120 330 L140 292 L160 336 L220 348 L260 320 L280 352 L360 366 L420 350 L440 318 L460 356 L540 372 L620 360 L660 326 L680 362 L760 370 L840 352 L860 318 L880 354 L960 362 L1010 330 L1030 296 L1050 338 L1110 346 L1140 306 L1160 344 L1200 350 L1200 420 Z" fill="var(--forest)" />
-  </g>
-</svg>
-<style>
-  .hero-art { display: block; width: 100%; height: clamp(200px, 36vw, 460px); }
+<section class="stage" id="map" aria-label="Interactive map of the Wy'east Climbers' routes on Mount Hood" data-landmarks={JSON.stringify(landmarkCards)} data-route-images={JSON.stringify(routeImages)}>
+  <div class="hero3d" role="img" aria-label="A three-dimensional model of Mount Hood and the forest around it, with the routes the Wy'east Climbers pioneered or reopened drawn on its flanks. Drag to turn, scroll or pinch to zoom."></div>
+
+  <div class="stage-ui">
+    <aside class="panel routes-panel" aria-label="Routes and landmarks">
+      <h2 class="panel-title">Routes</h2>
+      <!-- one list so the phone layout can show routes and landmarks as a single row of chips;
+           data-route holds the id of either -->
+      <ul>
+        {sorted.map((r) => (
+          <li>
+            <button type="button" data-route={r.id} class={r.kind} aria-pressed="false">
+              <i aria-hidden="true"></i><span>{r.name}</span>
+            </button>
+          </li>
+        ))}
+        <li class="list-heading"><h2 class="panel-title">Landmarks</h2></li>
+        {places.map((l) => (
+          <li>
+            <button type="button" data-route={l.id} class="landmark" aria-pressed="false">
+              <i aria-hidden="true"></i><span>{l.name}</span>
+            </button>
+          </li>
+        ))}
+        {skiTrails.length > 0 && <li class="list-heading"><h2 class="panel-title">Ski trails</h2></li>}
+        {skiTrails.map((l) => (
+          <li>
+            <button type="button" data-route={l.id} class="landmark trail" aria-pressed="false">
+              <i aria-hidden="true"></i><span>{l.name}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </aside>
+
+    <aside class="panel detail" aria-live="polite" hidden>
+      <button type="button" class="close" aria-label="Close details">×</button>
+      <figure class="card-image" hidden>
+        <img alt="" loading="lazy" decoding="async" />
+        <figcaption></figcaption>
+      </figure>
+      <p class="kind"></p>
+      <h3></h3>
+      <p class="summary"></p>
+      <p class="card-sources" hidden></p>
+      <a class="timeline-link" href="#timeline">On the timeline →</a>
+    </aside>
+
+    <aside class="panel view-panel" aria-label="Key">
+      <h2 class="panel-title">Key</h2>
+      <div class="legend">
+        <span class="first-ascent"><i></i>First ascent</span>
+        <span class="reopened"><i></i>Reopened</span>
+        <span class="standard"><i></i>Standard route</span>
+        <span class="landmark"><i></i>Landmark</span>
+        <span class="trail"><i></i>Ski trail</span>
+        <span class="road"><i></i>Road</span>
+      </div>
+    </aside>
+
+    <div class="tip" role="status" hidden>
+      <span class="tip-badge" aria-hidden="true">Tip</span>
+      <span class="tip-text"><strong>Click a route or landmark</strong> to fly to it. Drag to turn, scroll to zoom.</span>
+      <button type="button" class="tip-close" aria-label="Dismiss tip">×</button>
+    </div>
+
+    <button type="button" class="reset-view" aria-label="Reset view" title="Reset view">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 9.5A7 7 0 1 1 5 14.5M5.5 4v5.5H11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <div class="stage-title">
+      <p class="kicker">Portland, Oregon · 1930–1942</p>
+      <h1>The Wy'east Climbers</h1>
+    </div>
+
+    <p class="esc-note" role="status" aria-live="polite"></p>
+    <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a></p>
+  </div>
+</section>
+
+<!-- Appears once the map has scrolled away, e.g. after following a route to the timeline. -->
+<a class="back-to-map" href="#map" aria-label="Back to the map" title="Back to the map" hidden>
+  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</a>
+
+<script>
+  import { routes, kindLabels } from "../data/routes";
+  import type { HeroController } from "../scripts/hero3d";
+
+  const stage = document.querySelector<HTMLElement>(".stage")!;
+  const view = stage.querySelector<HTMLElement>(".hero3d")!;
+
+  // Scrolling at or below the top of the site title scrolls the page; above it zooms the model.
+  // Caught on the way down (capture), so the model's own wheel handler never sees it.
+  const stageTitle = stage.querySelector<HTMLElement>(".stage-title")!;
+  stage.addEventListener("wheel", (e) => {
+    if (e.clientY >= stageTitle.getBoundingClientRect().top) e.stopPropagation();
+  }, { capture: true, passive: true });
+  const detail = stage.querySelector<HTMLElement>(".detail")!;
+  const buttons = [...stage.querySelectorAll<HTMLButtonElement>("[data-route]")];
+  let hero: HeroController | undefined;
+
+  // The stage fills the viewport below the site header.
+  const fit = () => stage.style.setProperty("--stage-top", `${stage.getBoundingClientRect().top + scrollY}px`);
+  fit();
+  addEventListener("resize", fit);
+
+  type CardImg = { src: string; alt: string; credit: string; license: string; url?: string };
+  type LandmarkCard = { id: string; name: string; summary: string; milestone?: string; trail?: boolean; image?: CardImg; sources: { title: string; href: string }[] };
+  const landmarkCards: LandmarkCard[] = JSON.parse(stage.dataset.landmarks ?? "[]");
+  const routeImages: Record<string, CardImg> = JSON.parse(stage.dataset.routeImages ?? "{}");
+
+  const show = (id: string | null) => {
+    buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.route === id)));
+    // keep the selected chip centred in the phone's chip bar (whether picked there or on the model)
+    const chip = buttons.find((b) => b.dataset.route === id);
+    if (chip) {
+      const ul = chip.closest("ul")!, u = ul.getBoundingClientRect(), c = chip.getBoundingClientRect();
+      if (ul.scrollWidth > ul.clientWidth) ul.scrollTo({ left: ul.scrollLeft + (c.left - u.left) + c.width / 2 - u.width / 2, behavior: "smooth" });
+    }
+    const r = routes.find((x) => x.id === id);
+    const l = landmarkCards.find((x) => x.id === id);
+    const item = r ?? l;
+    detail.hidden = !item;
+    const backText = item ? `Back to ${item.name}` : "Back to the map";
+    back.setAttribute("aria-label", backText);
+    back.title = backText;
+    stage.classList.toggle("has-detail", !!item);
+    if (!item) stage.classList.remove("has-image");
+    if (!item) return;
+    detail.className = `panel detail ${r ? r.kind : "landmark"}`;
+    detail.querySelector(".kind")!.textContent = r ? kindLabels[r.kind] : l?.trail ? "Ski trail" : "Landmark";
+    detail.querySelector("h3")!.textContent = item.name;
+    // photo, with its credit and license under it
+    const image = r ? routeImages[r.id] : l?.image;
+    const fig = detail.querySelector<HTMLElement>(".card-image")!;
+    fig.hidden = !image;
+    detail.classList.toggle("has-image", !!image);
+    stage.classList.toggle("has-image", !!image);
+    if (image) {
+      const img = fig.querySelector("img")!;
+      img.src = image.src;
+      img.alt = image.alt;
+      const cap = fig.querySelector("figcaption")!;
+      cap.replaceChildren(`${image.credit} · `);
+      const lic = document.createElement(image.url ? "a" : "span");
+      lic.textContent = image.license;
+      if (image.url) { (lic as HTMLAnchorElement).href = image.url; (lic as HTMLAnchorElement).rel = "noopener"; }
+      cap.append(lic);
+    }
+    detail.querySelector(".summary")!.textContent = item.summary;
+    // landmarks cite their sources on the card
+    const src = detail.querySelector<HTMLElement>(".card-sources")!;
+    src.hidden = !l;
+    src.replaceChildren();
+    if (l) {
+      src.append(l.sources.length > 1 ? "Sources: " : "Source: ");
+      l.sources.forEach((s, i) => {
+        if (i) src.append(", ");
+        const a = document.createElement("a");
+        a.href = s.href;
+        a.textContent = s.title;
+        if (!s.href.startsWith("#")) a.rel = "noopener";
+        src.append(a);
+      });
+    }
+    const link = detail.querySelector<HTMLAnchorElement>(".timeline-link")!;
+    // only link to events that are on the timeline (undated ones aren't)
+    const milestone = item.milestone;
+    const onTimeline = !!milestone && !!document.getElementById(milestone);
+    link.hidden = !onTimeline;
+    if (onTimeline) link.href = `#${milestone}`;
+  };
+
+  buttons.forEach((b) =>
+    b.addEventListener("click", () => {
+      const id = b.getAttribute("aria-pressed") === "true" ? null : b.dataset.route!;
+      if (hero) hero.select(id);
+      else show(id);
+    }),
+  );
+  const closeRoute = () => (hero ? hero.select(null) : show(null));
+  detail.querySelector(".close")!.addEventListener("click", closeRoute);
+  // Reset: back to the starting view, with nothing selected.
+  // (optional chaining: if the button is ever removed from the markup, the map still loads)
+  stage.querySelector(".reset-view")?.addEventListener("click", () => (hero ? hero.reset() : show(null)));
+
+
+  // Tip: shown on every page load once the model is up; gone after the first interaction
+  // (or ×, or Escape) until the next load.
+  const tip = stage.querySelector<HTMLElement>(".tip")!;
+  try { localStorage.removeItem("wyeast-hero-tip-seen"); } catch {} // left over from when it only showed once
+  const dismissTip = () => {
+    if (tip.hidden) return;
+    tip.classList.add("gone");
+    setTimeout(() => (tip.hidden = true), 400);
+  };
+  if (matchMedia("(pointer: coarse)").matches) {
+    tip.querySelector(".tip-text")!.innerHTML = "<strong>Tap a route or landmark</strong> to fly to it. Drag to turn, pinch to zoom.";
+  }
+  tip.querySelector(".tip-close")!.addEventListener("click", dismissTip);
+
+  // Escape, while the map is on screen: closes the open card (returning focus to its button in the
+  // list) and the tip; with no card open, it hides the Routes and Key panels, and brings them back.
+  const escNote = stage.querySelector<HTMLElement>(".esc-note")!;
+  let escTimer = 0;
+  const togglePanels = () => {
+    const hidden = stage.classList.toggle("panels-hidden");
+    escNote.textContent = hidden ? "Panels hidden · press Esc to show them" : "Panels shown";
+    escNote.classList.add("show");
+    clearTimeout(escTimer);
+    escTimer = window.setTimeout(() => escNote.classList.remove("show"), 2200);
+  };
+  addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    const r = stage.getBoundingClientRect();
+    if (r.bottom < innerHeight * 0.3 || r.top > innerHeight * 0.7) return; // map not on screen
+    if (!tip.hidden) dismissTip();
+    if (!detail.hidden) {
+      const pressed = stage.querySelector<HTMLElement>('.routes-panel [aria-pressed="true"]');
+      const focusWasInside = stage.contains(document.activeElement);
+      closeRoute();
+      if (focusWasInside && !stage.classList.contains("panels-hidden")) pressed?.focus({ preventScroll: true });
+      return;
+    }
+    // keep keyboard focus out of panels that are about to hide
+    if (!stage.classList.contains("panels-hidden") && document.activeElement?.closest(".routes-panel, .view-panel")) {
+      (document.activeElement as HTMLElement).blur();
+    }
+    togglePanels();
+  });
+  buttons.forEach((b) => b.addEventListener("click", dismissTip));
+
+  // "Back to the map" button (bottom right): shown anywhere below the map.
+  const back = document.querySelector<HTMLAnchorElement>(".back-to-map")!;
+  back.hidden = false;
+  let backQueued = false;
+  const updateBack = () => {
+    backQueued = false;
+    back.classList.toggle("show", stage.getBoundingClientRect().bottom < innerHeight * 0.5);
+  };
+  addEventListener("scroll", () => { if (!backQueued) { backQueued = true; requestAnimationFrame(updateBack); } }, { passive: true });
+  addEventListener("resize", updateBack);
+  updateBack();
+  back.addEventListener("click", (e) => {
+    e.preventDefault();
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollTo({ top: 0, behavior: smooth ? "smooth" : "auto" });
+    history.replaceState(null, "", "#map");
+    stage.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
+  });
+
+  const start = () =>
+    import("../scripts/hero3d")
+      .then((m) => m.mountHero(view, {
+        onSelect: show,
+        onInteract: dismissTip,
+        // chips for routes and landmarks on the far side of the mountain fade (phones; see CSS)
+        onFacing: (ids) => buttons.forEach((b) => b.classList.toggle("away", b.dataset.route !== "summit" && !ids.includes(b.dataset.route!))),
+      }))
+      .then((c) => {
+        hero = c;
+        if (!c) return stage.classList.add("no-webgl");
+        setTimeout(() => (tip.hidden = false), 900);
+        // Catch up on a route the reader picked while the model was loading.
+        const picked = buttons.find((b) => b.getAttribute("aria-pressed") === "true");
+        if (picked) c.select(picked.dataset.route!);
+      })
+      .catch(() => stage.classList.add("no-webgl"));
+  if ("requestIdleCallback" in window) requestIdleCallback(start, { timeout: 1200 });
+  else setTimeout(start, 200);
+</script>
+
+<style is:global>
+  :root {
+    --hero-poster: url("/hero/hero-light-2400.webp");
+    --hero-bg: linear-gradient(180deg, color-mix(in srgb, var(--sky) 85%, var(--paper)) 0%, var(--paper) 100%);
+  }
+
+  /* ---------- stage ---------- */
+  .stage {
+    position: relative; overflow: hidden; background: var(--hero-bg);
+    height: calc(100svh - var(--stage-top, 7rem)); min-height: 480px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .stage.no-webgl { background: var(--paper-2) var(--hero-poster) center 70% / cover no-repeat; }
+  .stage.no-webgl .hint, .stage.no-webgl .view-panel, .stage.no-webgl .reset-view { display: none; }
+  .hero3d { position: absolute; inset: 0; }
+  .hero3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 0.8s ease; cursor: grab; }
+  .hero3d canvas:active { cursor: grabbing; }
+  .hero3d.ready canvas { opacity: 1; }
+
+  .stage-ui { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  /* soft fade behind the title so it stays readable over the forest */
+  .stage-ui::before {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 26%; pointer-events: none;
+    background: linear-gradient(to top, var(--paper) 10%, color-mix(in srgb, var(--paper) 70%, transparent) 45%, transparent);
+  }
+  .stage-ui > * { pointer-events: auto; }
+
+  .panel {
+    position: absolute; background: color-mix(in srgb, var(--paper) 90%, transparent);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1.5px solid var(--ink); border-radius: 8px; box-shadow: 3px 3px 0 var(--ink);
+    font: 0.85rem/1.35 var(--sans); color: var(--ink);
+  }
+  .panel-title { font: 700 0.72rem/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; margin: 0; padding: 0.8rem 1rem 0.6rem; border-bottom: 1px solid var(--rule); }
+
+  .routes-panel { left: 1rem; top: 1rem; width: 15.5rem; max-height: calc(100% - 15rem); overflow: auto; }
+  /* leave room for the details card below the list while one is open (the list scrolls) */
+  .has-detail .routes-panel { max-height: calc(100% - 24rem); }
+  .has-detail.has-image .routes-panel { max-height: calc(100% - 35rem); }
+  .routes-panel ul { list-style: none; margin: 0; padding: 0.35rem; }
+  .routes-panel button {
+    display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left; cursor: pointer;
+    font: 500 0.85rem/1.25 var(--sans); color: var(--ink); background: none; border: 0; border-radius: 5px; padding: 0.45rem 0.6rem;
+  }
+  .routes-panel button:hover { background: var(--paper-2); }
+  .routes-panel button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .routes-panel i, .legend i, .hero3d-label i { flex: none; width: 1.1rem; height: 0; border-top: 3px solid; }
+  .first-ascent i { border-top: 3px solid #b23426; }
+  /* landmarks: an ink diamond, like the marker on the model */
+  /* ski trails: dashed blue; roads: grey */
+  .routes-panel .trail i, .legend .trail i, .hero3d-label.trail i {
+    width: 1.1rem; height: 0; margin: 0; border: 0; border-top: 3px dashed #3f6e8c; background: none; rotate: none;
+  }
+  .legend .road i { border-top: 4px solid #8b847b; }
+  .credit a { color: inherit; }
+  .routes-panel .landmark:not(.trail) i, .legend .landmark i, .hero3d-label.landmark:not(.trail) i {
+    width: 0.5rem; height: 0.5rem; margin: 0 0.3rem; border: 1.5px solid var(--ink); background: var(--ink); rotate: 45deg;
+  }
+  .routes-panel button.landmark[aria-pressed="true"] i { border-color: var(--paper); background: var(--paper); }
+  .hero3d-label.landmark { border-radius: 5px; }
+  .hero3d-label.landmark.active i { border-color: var(--paper); background: var(--paper); }
+  .routes-panel .list-heading .panel-title { margin: 0.4rem -0.35rem 0.25rem; border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .card-sources { margin: -0.2rem 0 0.6rem; font-size: 0.78rem; color: var(--ink-soft); }
+  /* card photo: full width across the top of the card, credit underneath */
+  .card-image { margin: -0.9rem -1rem 0.75rem; }
+  .card-image img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6.5px 6.5px 0 0; border-bottom: 1.5px solid var(--ink); background: var(--paper-2); }
+  .card-image figcaption { margin: 0; padding: 0.35rem 1rem 0; font: 0.68rem/1.35 var(--sans); color: var(--ink-soft); }
+  .card-image figcaption a { color: inherit; }
+  .detail.has-image .close { z-index: 1; top: 0.5rem; right: 0.5rem; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--paper); border: 1.5px solid var(--ink); color: var(--ink); }
+  .hero3d-summit.selectable { pointer-events: auto; cursor: pointer; }
+  .hero3d-summit.selectable:hover strong, .hero3d-summit.active strong { color: var(--accent); }
+  .hero3d-summit.selectable:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  .reopened i { border-top: 3px dashed #c4800a; }
+  .standard i { border-top: 3px dotted #6b6f73; }
+
+  .detail { left: 1rem; bottom: 4.5rem; width: 19rem; padding: 0.9rem 1rem 1rem; }
+  .detail .kind { margin: 0 0 0.3rem; font: 700 0.68rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+  .detail h3 { margin: 0 0 0.4rem; font-size: 1.25rem; }
+  .detail .summary { margin: 0 0 0.6rem; }
+  .detail .timeline-link { font-weight: 600; }
+  .detail .close { position: absolute; top: 0.4rem; right: 0.5rem; border: 0; background: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--ink-soft); }
+
+  .view-panel { right: 1rem; top: 1rem; width: 12.5rem; padding-bottom: 0.75rem; }
+  /* Esc hides the Routes and Key panels (and brings them back) */
+  .routes-panel, .view-panel { transition: opacity 0.25s, translate 0.25s; }
+  .panels-hidden .routes-panel { opacity: 0; translate: -0.75rem 0; pointer-events: none; visibility: hidden; transition: opacity 0.25s, translate 0.25s, visibility 0s 0.25s; }
+  .panels-hidden .view-panel { opacity: 0; translate: 0.75rem 0; pointer-events: none; visibility: hidden; transition: opacity 0.25s, translate 0.25s, visibility 0s 0.25s; }
+  .esc-note {
+    position: absolute; left: 50%; top: 1rem; translate: -50% -0.5rem; z-index: 3; margin: 0; pointer-events: none;
+    font: 600 0.8rem/1 var(--sans); color: var(--paper); background: var(--ink); padding: 0.55rem 0.9rem; border-radius: 999px;
+    opacity: 0; transition: opacity 0.25s, translate 0.25s;
+  }
+  .esc-note.show { opacity: 1; translate: -50% 0; }
+  @media (prefers-reduced-motion: reduce) { .routes-panel, .view-panel, .esc-note { transition: none; } }
+  .legend { display: grid; gap: 0.45rem; margin: 0.7rem 1rem 0; font-size: 0.8rem; color: var(--ink-soft); }
+  .legend span { display: flex; align-items: center; gap: 0.5rem; }
+
+  .reset-view {
+    position: absolute; right: 1rem; bottom: 2rem; width: 4rem; height: 4rem;
+    display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--ink);
+    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--ink);
+  }
+  .reset-view svg { width: 45%; height: 45%; }
+  .reset-view:hover { background: var(--paper-2); }
+  .reset-view:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+
+  .stage-title { position: absolute; left: 50%; bottom: 2rem; translate: -50% 0; text-align: center; pointer-events: none; }
+  .stage-title .kicker { margin-bottom: 0.3rem; }
+  .stage-title h1 { margin: 0; font-size: clamp(1.8rem, 3.6vw, 3rem); text-shadow: 0 0 12px var(--paper), 0 0 3px var(--paper); white-space: nowrap; }
+  .credit { position: absolute; right: 1rem; bottom: 0.6rem; margin: 0; font: 0.7rem/1 var(--sans); color: var(--ink-soft); }
+  .credit .hint { font-weight: 600; color: var(--ink); }
+
+  /* back to the map */
+  .back-to-map {
+    position: fixed; z-index: 20;
+    right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom));
+    display: grid; place-items: center; width: 4rem; height: 4rem;
+    color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%;
+    box-shadow: 2px 2px 0 var(--ink);
+    opacity: 0; translate: 0 0.75rem; pointer-events: none; transition: opacity 0.25s, translate 0.25s;
+  }
+  .back-to-map.show { opacity: 1; translate: 0 0; pointer-events: auto; }
+  .back-to-map:hover { background: var(--paper-2); }
+  .back-to-map:active { box-shadow: 1px 1px 0 var(--ink); }
+  .back-to-map svg { transition: translate 0.2s; }
+  .back-to-map:hover svg { translate: 0 -2px; }
+  @media (prefers-reduced-motion: reduce) { .back-to-map { transition: none; } }
+  @media print { .back-to-map { display: none; } }
+
+  /* tip: bottom left, beside the title on wide screens */
+  .tip {
+    position: absolute; left: 1rem; bottom: 2rem; z-index: 3;
+    display: flex; align-items: center; gap: 0.6rem; max-width: min(26rem, calc(50% - 19rem));
+    padding: 0.5rem 0.5rem 0.5rem 0.6rem; font: 0.82rem/1.35 var(--sans); color: var(--ink);
+    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 999px; box-shadow: 2px 2px 0 var(--ink);
+    /* 'backwards' (not 'both') so the animation lets go once it ends and .gone can fade it out */
+    animation: tip-in 0.5s ease backwards; transition: opacity 0.35s, translate 0.35s;
+  }
+  .tip.gone { opacity: 0; translate: 0 0.5rem; pointer-events: none; }
+  /* mid-width screens: not enough room beside the title, so sit just above its level */
+  @media (min-width: 761px) and (max-width: 1199px) { .tip { bottom: 5.25rem; max-width: 24rem; } }
+  .tip[hidden] { display: none; } /* .tip's display: flex would otherwise override [hidden] */
+  .tip-badge { flex: none; font: 700 0.66rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper); background: var(--ink); padding: 0.35em 0.6em; border-radius: 999px; }
+  .tip-close { flex: none; width: 2rem; height: 2rem; margin: -0.2rem -0.1rem -0.2rem 0; border: 0; border-radius: 50%; background: none; color: var(--ink-soft); font-size: 1.15rem; line-height: 1; cursor: pointer; }
+  .tip-close:hover { background: var(--paper-2); color: var(--ink); }
+  @keyframes tip-in { from { opacity: 0; translate: 0 0.5rem; } }
+  @media (prefers-reduced-motion: reduce) { .tip { animation: none; transition: none; } }
+
+  /* labels drawn over the model */
+  .hero3d-labels { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .hero3d-labels.off .hero3d-label:not(.active) { display: none; }
+  .hero3d-label, .hero3d-summit { position: absolute; left: 0; top: 0; will-change: transform; transition: opacity 0.35s ease; }
+  .hero3d-label.hidden, .hero3d-summit.hidden { opacity: 0; pointer-events: none !important; }
+  .hero3d-label {
+    pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4em;
+    /* centred just above its point on the model */
+    translate: -50% calc(-100% - 0.45rem);
+    font: 600 0.74rem/1 var(--sans); white-space: nowrap; color: var(--ink);
+    background: color-mix(in srgb, var(--paper) 92%, transparent); border: 1.5px solid var(--ink);
+    padding: 0.4em 0.75em 0.4em 0.55em; border-radius: 999px; box-shadow: 2px 2px 0 var(--ink);
+  }
+  .hero3d-label i { width: 0.9rem; }
+  .hero3d-label.active { background: var(--ink); color: var(--paper); }
+  .hero3d-summit { margin: -3.2rem 0 0 0; translate: -50% 0; text-align: center; color: var(--ink); text-shadow: 0 0 6px var(--paper), 0 0 2px var(--paper); pointer-events: none; }
+  .hero3d-summit strong { display: block; font: 600 1.15rem/1.1 var(--display); }
+  .hero3d-summit span { font: 600 0.72rem/1 var(--sans); letter-spacing: 0.08em; }
+
+  /* ---------- narrow screens: chips along the top, details as a bottom sheet ---------- */
+  @media (max-width: 760px) {
+    .stage { min-height: 520px; }
+    .view-panel { display: none; }
+    /* phones use the labels on the model itself (as on desktop) instead of a list */
+    .routes-panel { display: none; }
+    .hero3d-label { font-size: 0.68rem; padding: 0.35em 0.65em 0.35em 0.5em; box-shadow: 1.5px 1.5px 0 var(--ink); }
+    .hero3d-summit strong { font-size: 1rem; }
+    .detail { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: auto; z-index: 3; }
+    .card-image img { aspect-ratio: 2 / 1; } /* shorter photo so the bottom card leaves the map visible */
+    .stage-title { bottom: 2rem; }
+    .stage-title .kicker { display: none; }
+    .credit { display: none; }
+    /* just above the title, leaving room for the reset button on the right */
+    .reset-view { right: 0.75rem; bottom: 2rem; width: 4rem; height: 4rem; }
+    .tip { bottom: 3.9rem; left: 0.75rem; right: 3.6rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
+    .has-detail .stage-title, .has-detail .reset-view { visibility: hidden; }
+  }
 </style>

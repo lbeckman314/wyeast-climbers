@@ -1,9 +1,0 @@
----
-import { getCollection } from "astro:content";
-import Redirect from "../../components/Redirect.astro";
-
-export async function getStaticPaths() {
-  return (await getCollection("exhibits", (e) => !e.data.draft)).map((e) => ({ params: { id: e.id } }));
-}
----
-<Redirect to={`/#exhibit-${Astro.params.id}`} />

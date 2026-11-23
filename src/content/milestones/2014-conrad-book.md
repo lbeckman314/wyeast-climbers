@@ -6,4 +6,4 @@ category: legacy
 sources: [conrad-2014, conrad-qa-2015]
 status: sourced
 ---
-*Mount Hood: Adventures of the Wy'east Climbers, 1930–1942* draws on interviews with surviving Wy'easters (Hank Lewis, Lu Norene, Russ McJury and Randall Kester) and on the Wy'east Bulletins, the Mazama Annuals and archives, summit registers, and the *Oregonian* and *Oregon Journal*. Charcoal illustrations are by Lon Haverly.
+[*Mount Hood: Adventures of the Wy'east Climbers, 1930–1942*](#source-conrad-2014) draws on interviews with surviving Wy'easters (Hank Lewis, Lu Norene, Russ McJury and Randall Kester) and on the Wy'east Bulletins, the Mazama Annuals and archives, summit registers, and the *Oregonian* and *Oregon Journal*. Charcoal illustrations are by Lon Haverly.

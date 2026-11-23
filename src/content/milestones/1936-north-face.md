@@ -6,8 +6,7 @@ category: climb
 people: [russ-mcjury]
 sources: [shredhood-son-of-10th]
 status: sourced
-exhibit: routes
 ---
-Russ McJury and Bill Hackett are credited with the first ascent of Mount Hood's North Face.
+Russ McJury and Bill Hackett [are credited](https://shredhood.com/2015/04/27/son-of-the-10th/) with the first ascent of Mount Hood's North Face.
 
 *To verify:* the exact date, and whether this counts as a club climb.

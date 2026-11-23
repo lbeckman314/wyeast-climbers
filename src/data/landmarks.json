@@ -1,0 +1,200 @@
+[
+  {
+    "id": "summit",
+    "name": "Summit",
+    "at": "summit",
+    "shape": "summit",
+    "summary": "Mount Hood's summit. In July 1940 a party of Wy'east Climbers carried Ranger the climbing dog up the mountain and buried him just below the top.",
+    "sources": [
+      "ranger-mhh"
+    ],
+    "milestone": "1940-07-ranger-burial",
+    "image": {
+      "file": "summit-from-south.jpg",
+      "alt": "Mount Hood's summit from the south in late summer, with the Palmer Glacier at lower left",
+      "credit": "M. O. Stevens",
+      "license": "CC BY-SA 3.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Mount_Hood_summit_from_south_late_summer.JPG"
+    }
+  },
+  {
+    "id": "timberline-lodge",
+    "name": "Timberline Lodge",
+    "shape": "lodge",
+    "lat": 45.33111,
+    "lon": -121.71,
+    "summary": "Built from 1936 to 1938 by the Works Progress Administration, and dedicated by President Franklin D. Roosevelt on September 28, 1937.",
+    "sources": [
+      "timberline-lodge"
+    ],
+    "milestone": "1937-09-timberline",
+    "image": {
+      "file": "timberline-lodge-dedication-1937.jpg",
+      "alt": "President Franklin D. Roosevelt at the podium, dedicating Timberline Lodge on September 28, 1937",
+      "credit": "U.S. Forest Service",
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:FDR-Dedicating-Timberline-Lodge-1937.jpg"
+    }
+  },
+  {
+    "id": "silcox-hut",
+    "name": "Silcox Hut",
+    "shape": "hut",
+    "lat": 45.344562,
+    "lon": -121.709521,
+    "summary": "Built by the WPA above Timberline Lodge and finished in 1939. It is named for Ferdinand Silcox, chief of the Forest Service from 1933 to 1939.",
+    "sources": [
+      "wikipedia-silcox-hut"
+    ],
+    "image": {
+      "file": "silcox-hut-2020.jpg",
+      "alt": "Silcox Hut at Timberline Lodge, Mount Hood, January 2020",
+      "credit": "Eric C Gardner",
+      "license": "CC BY-SA 4.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Silcox_Hut_2020-01-05.jpg"
+    }
+  },
+  {
+    "id": "cloud-cap-inn",
+    "name": "Cloud Cap Inn",
+    "shape": "inn",
+    "lat": 45.404043,
+    "lon": -121.654432,
+    "summary": "An inn on Hood's north side that opened in 1889 and closed as a business in 1946. Since the 1950s it has been used by the Crag Rats search and rescue group.",
+    "sources": [
+      "wikipedia-cloud-cap-inn"
+    ],
+    "image": {
+      "file": "cloud-cap-inn-1889.jpg",
+      "alt": "Cloud Cap Inn not long after it was built in 1889",
+      "credit": "Unknown photographer",
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Cloud_Cap_Inn_1889.jpg"
+    }
+  },
+  {
+    "id": "government-camp",
+    "name": "Government Camp",
+    "shape": "village",
+    "lat": 45.30222,
+    "lon": -121.7525,
+    "summary": "A village on Hood's south side, named for 1849, when U.S. Cavalry troops had to abandon wagons and supplies there.",
+    "sources": [
+      "wikipedia-government-camp"
+    ],
+    "milestone": "1937-mountain-shop",
+    "image": {
+      "file": "government-camp-downtown.jpg",
+      "alt": "Downtown Government Camp, Oregon",
+      "credit": "Mt. Hood Territory",
+      "license": "CC BY-SA 4.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Government_Camp_at_night_-_horizontal_-_237_(8408218339).jpg"
+    }
+  },
+  {
+    "id": "battle-axe-inn",
+    "name": "Battle Axe Inn",
+    "point": "Huckleberry Inn",
+    "summary": "Government Camp's largest building, at the center of the business area. Built in 1925 for Everett Sickler, it closed in November 1950. The Huckleberry Inn stands on the site today.",
+    "sources": [
+      "mounthoodhistory-battle-axe-inn",
+      "mthoodmuseum-skisterical-guide"
+    ],
+    "image": {
+      "file": "battle-axe-inn-1930s.jpg",
+      "alt": "The Battle Axe Inn in Government Camp in the 1930s, with cars parked in front",
+      "credit": "U.S. Forest Service, Pacific Northwest Region",
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:031_Battle_Axe_Inn,_Government_Camp_1930%27s_(36168155646).jpg"
+    }
+  },
+  {
+    "id": "hills-place",
+    "name": "Hill's Place",
+    "point": "Hill's Place (across the loop road)",
+    "summary": "Charlie Hill's no-frills café, built in 1934 on the south side of the loop road, directly across from the Battle Axe Inn. It burned in 1969.",
+    "sources": [
+      "mthoodmuseum-skisterical-guide"
+    ]
+  },
+  {
+    "id": "mazama-lodge",
+    "name": "Mazama Lodge",
+    "point": "Mazama Lodge",
+    "summary": "The Mazamas' lodge, on the West Leg Road: the downhill half of the original one-way road between Timberline Lodge and Government Camp, which a new access road replaced in 1950.",
+    "sources": [
+      "mthoodmuseum-skisterical-guide",
+      "openstreetmap"
+    ],
+    "image": {
+      "file": "mazama-lodge-interior.jpg",
+      "alt": "The stone fireplace inside Mazama Lodge, Government Camp",
+      "credit": "U.S. Forest Service, Pacific Northwest Region",
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:387_Mazama_Lodge_interior,_Government_Camp_(36074323861).jpg"
+    }
+  },
+  {
+    "id": "multorpor",
+    "name": "Multorpor ski jump",
+    "point": "Multorpor Restaurant and Lounge",
+    "summary": "Multorpor Mountain lies just south of Government Camp, across Highway 26. Its ski jump was first used in January 1929, and as many as 10,000 spectators came to tournaments there in the 1930s and '40s. After a 1950 fire, Everett Darr and Carl Reynolds built a lodge and lifts there as the Multorpor Ski Area.",
+    "sources": [
+      "mthoodmuseum-skisterical-guide",
+      "mounthoodhistory-multorpor"
+    ],
+    "image": {
+      "file": "multorpor-ski-jump.jpg",
+      "alt": "The ski jump at the Multorpor ski area",
+      "credit": "U.S. Forest Service, Pacific Northwest Region",
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:425_Ski_jump_at_Multorpor_ski_area_(35373305984).jpg"
+    }
+  },
+  {
+    "id": "ski-bowl",
+    "name": "Ski Bowl",
+    "point": "Tom Dick and Harry Mountain",
+    "summary": "Mount Hood's first rope tow was built in 1936 in the upper bowl of Tom, Dick and Harry Mountain. Its steep runs were used for the 1939 National Ski Championships.",
+    "sources": [
+      "mthoodmuseum-skisterical-guide"
+    ],
+    "image": {
+      "file": "skibowl-warming-hut.jpg",
+      "alt": "Outside the warming hut at Skibowl, 2011",
+      "credit": "Mt. Hood Territory",
+      "license": "CC BY 2.0",
+      "url": "https://commons.wikimedia.org/wiki/File:Mt_Hood_Skibowl_Warmhut_(6555203355).jpg"
+    }
+  },
+  {
+    "id": "summit-ski-area",
+    "name": "Summit Ski Area",
+    "point": "Alpine Trail lower end",
+    "summary": "Built in 1927, the oldest ski area on Mount Hood. The Alpine Trail from Timberline Lodge, finished in December 1936, ended here.",
+    "sources": [
+      "mthoodmuseum-skisterical-guide",
+      "mthoodmuseum-trail-skiing"
+    ]
+  },
+  {
+    "id": "glade-trail",
+    "name": "Glade Trail",
+    "trail": "glade-trail",
+    "summary": "One of two ski trails the Forest Service built from Timberline Lodge down to Government Camp, so skiers could return to their cars. It followed the old Blossom Trail through open glades to the core of the village.",
+    "sources": [
+      "mthoodmuseum-skisterical-guide",
+      "mthoodmuseum-trail-skiing"
+    ]
+  },
+  {
+    "id": "alpine-trail",
+    "name": "Alpine Trail",
+    "trail": "alpine-trail",
+    "summary": "The first of the new ski trails from Timberline Lodge, completed in December 1936; it ended at the Summit Ski Area. Today it is a 2.1-mile trail.",
+    "sources": [
+      "mthoodmuseum-trail-skiing",
+      "usfs-alpine-trail"
+    ]
+  }
+]

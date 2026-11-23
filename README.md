@@ -4,11 +4,11 @@ A living history of the Wy'east Climbers, the Portland mountaineering club that
 pioneered new routes on Mount Hood in the 1930s. Built with [Astro](https://astro.build)
 as a static, single-page site, ready for GitHub Pages.
 
-Everything (timeline, exhibits, route map, people, sources, research desk, about) renders
+Everything (timeline, route map, people, sources, research desk, about) renders
 into one page, `src/pages/index.astro`, with each part reachable by anchor (`/#timeline`,
-`/#exhibit-ranger`, `/#person-everett-darr`, …). Old URLs such as `/timeline` or
+`/#person-everett-darr`, …). Old URLs such as `/timeline` or
 `/people/ranger` still work and redirect to their section. Inside markdown content, link
-with anchors: `#contribute`, `#exhibit-<id>`, `#person-<id>`, or a milestone's `#<id>`.
+with anchors: `#contribute`, `#person-<id>`, or a milestone's `#<id>`.
 
 ## Run it
 
@@ -24,19 +24,18 @@ npm run build    # static output in dist/
 |---|---|---|
 | Timeline entries | `src/content/milestones/*.md` | One file per event. `date` sorts; `dateLabel` displays. Use `undated: true` if the date is unknown. |
 | People | `src/content/people/*.md` | `membership`: `member` / `probable` / `associate`. |
-| Exhibits | `src/content/exhibits/*.md` | Long-form stories. `order` sets sequence; `draft: true` hides. |
 | Sources | `src/content/sources.yaml` | Every citation points to an `id` here. The build fails on an unknown id. |
 
 Every timeline entry and profile has a `status`:
 
 - `sourced`: backed by a cited source
 - `conflicting`: sources disagree (explain it in the body)
-- `unverified`: still needs a source (shown publicly with a "Needs a source" badge)
+- `unverified`: still needs a source. Avoid publishing these: the site only carries sourced content.
 
 ### Adding a photo
 
-Put images in `src/assets/` or `public/images/` and replace a `<figure class="photo-needed">`
-placeholder with a normal `<figure><img …><figcaption>…</figcaption></figure>`.
+Put images in `src/assets/` or `public/images/` and add a normal
+`<figure><img …><figcaption>…</figcaption></figure>` where it belongs.
 **Always include the credit line and record the permission** (see REVIEW.md).
 
 ## Deploying to wyeastclimbers.com

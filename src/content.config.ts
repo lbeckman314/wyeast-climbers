@@ -36,7 +36,6 @@ const milestones = defineCollection({
     people: z.array(reference("people")).default([]),
     sources: z.array(reference("sources")).default([]),
     status,
-    exhibit: reference("exhibits").optional(),
   }),
 });
 
@@ -54,20 +53,6 @@ const people = defineCollection({
   }),
 });
 
-const exhibits = defineCollection({
-  loader: glob({ pattern: "**/*.md", base: "./src/content/exhibits" }),
-  schema: z.object({
-    title: z.string(),
-    kicker: z.string(),
-    summary: z.string(),
-    order: z.number(),
-    sources: z.array(reference("sources")).default([]),
-    draft: z.boolean().default(false),
-    // Optional interactive feature rendered above the exhibit text.
-    feature: z.enum(["route-map"]).optional(),
-  }),
-});
-
 const permissions = defineCollection({
   loader: file("src/content/permissions.yaml"),
   schema: z.object({
@@ -77,9 +62,9 @@ const permissions = defineCollection({
     requested: z.coerce.date().optional(),
     terms: z.string().optional(),
     credit: z.string().optional(),
-    // exhibit or person ids this image is meant for
+    // person ids this image is meant for
     for: z.array(z.string()).default([]),
   }),
 });
 
-export const collections = { sources, milestones, people, exhibits, permissions };
+export const collections = { sources, milestones, people, permissions };

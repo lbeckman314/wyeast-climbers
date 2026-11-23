@@ -6,6 +6,5 @@ category: rescue
 people: [barney-macnab, hank-lewis]
 sources: [mhsp-history]
 status: sourced
-exhibit: patrol-and-rescue
 ---
-The patrol was formally organized and incorporated with about 50 members. Barney Macnab was president and Hank Lewis patrol chief. It is often described as the nation's first organized volunteer ski patrol, and it is still running.
+The patrol was [formally organized and incorporated](https://mthoodskipatrol.org/our-history/) with about 50 members. Barney Macnab was president and Hank Lewis patrol chief. It is often described as the nation's first organized volunteer ski patrol, and it is still running.

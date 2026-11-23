@@ -1,5 +1,5 @@
 ---
-import { getEntries, getEntry, render, type CollectionEntry } from "astro:content";
+import { getEntries, render, type CollectionEntry } from "astro:content";
 import Badge from "./Badge.astro";
 import { categoryLabels } from "../lib";
 
@@ -8,10 +8,30 @@ const { m } = Astro.props;
 const { Content } = await render(m);
 const people = await getEntries(m.data.people);
 const sources = await getEntries(m.data.sources);
-const exhibit = m.data.exhibit ? await getEntry(m.data.exhibit) : undefined;
 const year = m.data.date && !m.data.undated ? m.data.date.getUTCFullYear() : undefined;
+
+// Each source links to its web page, or to its listing in the Sources tab if it has none.
+const sourceHref = (s: (typeof sources)[number]) => s.data.url ?? `#source-${s.id}`;
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+// Numbered citation markers, added to the end of the entry text (after the last paragraph
+// that isn't a "To verify" note) and matching the numbered source list below it.
+const markers = sources.length
+  ? `<sup class="refs">${sources
+      .map((s, i) => `<a href="${esc(sourceHref(s))}" title="${esc(s.data.title)}"${s.data.url ? ' rel="noopener"' : ""}>${i + 1}</a>`)
+      .join("")}</sup>`
+  : "";
+let bodyHtml = m.rendered?.html;
+if (bodyHtml && markers) {
+  const ends = [...bodyHtml.matchAll(/<p>([\s\S]*?)<\/p>/g)];
+  const target = [...ends].reverse().find((x) => !/^\s*<em>To verify/.test(x[1])) ?? ends.at(-1);
+  if (target) {
+    const at = target.index! + target[0].length - "</p>".length;
+    bodyHtml = bodyHtml.slice(0, at) + markers + bodyHtml.slice(at);
+  }
+}
 ---
-<li class="milestone" data-category={m.data.category} data-year={year}>
+<li class="milestone" id={`ms-${m.id}`} data-id={m.id} data-category={m.data.category} data-year={year}>
   <div class="when">{m.data.dateLabel ?? m.data.date?.toISOString().slice(0, 10)}</div>
   <div class="what">
     <div class="meta">
@@ -19,22 +39,26 @@ const year = m.data.date && !m.data.undated ? m.data.date.getUTCFullYear() : und
       <Badge status={m.data.status} />
     </div>
     <h3 id={m.id}><a href={`#${m.id}`}>{m.data.title}</a></h3>
-    <div class="body"><Content /></div>
-    {(people.length > 0 || exhibit) && (
+    <div class="body">{bodyHtml ? <Fragment set:html={bodyHtml} /> : <Content />}</div>
+    {people.length > 0 && (
       <p class="links">
         {people.length > 0 && (
           <span>People: {people.map((p, i) => <>{i > 0 && ", "}<a href={`#person-${p.id}`}>{p.data.name.replace(/ \(.*\)$/, "")}</a></>)}</span>
         )}
-        {exhibit && <span>Exhibit: <a href={`#exhibit-${exhibit.id}`}>{exhibit.data.title}</a></span>}
       </p>
     )}
     {sources.length > 0 && (
-      <details class="cites">
-        <summary>{sources.length} source{sources.length > 1 ? "s" : ""}</summary>
-        <ul>
-          {sources.map((s) => <li>{s.data.url ? <a href={s.data.url} rel="noopener">{s.data.title}</a> : <cite>{s.data.title}</cite>}{s.data.publisher && ` — ${s.data.publisher}`}</li>)}
-        </ul>
-      </details>
+      <div class="cites">
+        <p class="cites-title">Source{sources.length > 1 ? "s" : ""}</p>
+        <ol>
+          {sources.map((s) => (
+            <li>
+              <a href={sourceHref(s)} rel={s.data.url ? "noopener" : undefined}>{s.data.title}</a>
+              {s.data.author && <> · {s.data.author}</>}{s.data.publisher && <> · {s.data.publisher}</>}{s.data.year && <>, {s.data.year}</>}
+            </li>
+          ))}
+        </ol>
+      </div>
     )}
   </div>
 </li>
@@ -49,9 +73,16 @@ const year = m.data.date && !m.data.undated ? m.data.date.getUTCFullYear() : und
   .body { max-width: var(--measure); }
   .body :global(p) { margin-bottom: 0.7rem; }
   .links { font: 0.88rem/1.5 var(--sans); color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0.25rem 0 0.5rem; }
-  .cites { font: 0.85rem/1.5 var(--sans); color: var(--ink-soft); }
-  .cites summary { cursor: pointer; width: fit-content; }
-  .cites ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+  /* citation markers in the text: small linked numbers */
+  .body :global(.refs) { margin-left: 0.15em; font: 600 0.7em/0 var(--sans); }
+  .body :global(.refs a) { text-decoration: none; padding: 0 0.1em; }
+  .body :global(.refs a:hover) { text-decoration: underline; }
+  .body :global(.refs a + a)::before { content: ","; color: var(--ink-soft); margin-right: 0.1em; }
+  .cites { font: 0.85rem/1.5 var(--sans); color: var(--ink-soft); max-width: var(--measure); margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--rule); }
+  .cites-title { margin: 0 0 0.25rem; font: 700 0.68rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; }
+  .cites ol { margin: 0; padding-left: 1.4rem; }
+  .cites li { margin-bottom: 0.2rem; }
+  .cites li::marker { font-weight: 600; color: var(--accent); }
   @media (max-width: 640px) {
     .milestone { grid-template-columns: 1fr; gap: 0.35rem; }
   }

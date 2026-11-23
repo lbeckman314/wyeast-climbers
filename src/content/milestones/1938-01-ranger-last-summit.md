@@ -6,6 +6,5 @@ category: context
 people: [ranger]
 sources: [ranger-mhh]
 status: sourced
-exhibit: ranger
 ---
-The last summit register entry for Ranger the climbing dog is dated January 1, 1938, a New Year's climb.
+[The last summit register entry](https://mounthoodhistory.com/mount-hood/ranger-and-laddie-on-mount-hood-legendary-climbing-dogs/) for Ranger the climbing dog is dated January 1, 1938, a New Year's climb.

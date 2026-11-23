@@ -4,8 +4,9 @@ This draft was built overnight from published sources. Everything below needs a 
 
 ## 1. Facts that need checking against Conrad's book
 
-Shown on the site with a **Needs a source** badge:
-- **1934 club cabin**: location, builders, fate. (`milestones/1934-cabin.md`)
+Restored with a source: the **1934 club cabin** is back on the timeline, sourced to the Mount Hood Museum's guide to the Skisterical map. Still worth checking against Conrad: who built it and exactly where it stood.
+
+Removed from the site because they have no source yet (recover them from git history once sourced):
 - **Oct 4, 1931 "Dog Rescues Six"**: were Wy'easters in the party?
 - **May 2, 1937 ski circuit** by Leuthold & Darr: came from a search-engine summary of notes on Grauer's book. The page itself was down.
 - **1942 "end of an era"**: what actually happened to the club after 1942? *Biggest open question.*
@@ -23,7 +24,7 @@ Also worth checking:
 - Whether Bill Hackett (North Face, 1936) was a Wy'easter.
 
 ## 2. Things only you can decide
-- **Contact email**: the About page uses `hello@wyeastclimbers.com` as a placeholder (`src/pages/index.astro`, About section). Set it up or change it.
+- **Contact email and site author**: set `author.name` and `author.email` in `src/config.ts`. The About page's contact button uses them (it shows the placeholder `hello@wyeastclimbers.com` until then).
 - **Site voice and "we"**: the copy speaks as "we" (the project). Who is behind it publicly?
 - **Draft banner**: remove from `src/layouts/Base.astro` when you're ready.
 - **Separate repo vs. subfolder**: see README → Deploying.

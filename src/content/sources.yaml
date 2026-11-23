@@ -27,8 +27,7 @@
   url: https://www.ohs.org/shop/museum-store/books-and-publications/mount-hood-adventures-of-the-wy-east-climbers.cfm
   kind: web
   note: >-
-    Source of the "December 1930" founding date and the 1934 cabin as summarised
-    by a search tool. Re-check the wording directly against the book.
+    Source of the "December 1930" founding date as summarised by a search tool. Re-check the wording directly against the book.
 
 - id: pnwsar-history
   title: "The History of PNWSAR"
@@ -116,8 +115,71 @@
   url: https://en.wikipedia.org/wiki/Timberline_Lodge
   kind: web
 
+- id: wikipedia-silcox-hut
+  title: "Silcox Hut"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Silcox_Hut
+  kind: web
+
+- id: wikipedia-cloud-cap-inn
+  title: "Cloud Cap Inn"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Cloud_Cap_Inn
+  kind: web
+
+- id: wikipedia-government-camp
+  title: "Government Camp, Oregon"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Government_Camp,_Oregon
+  kind: web
+
 - id: ranger-film-2024
   title: "Ranger: The Climbing Dog of Mount Hood"
   author: Ned Thanhouser and Jeff Thomas
   year: 2024
   kind: film
+
+- id: mthoodmuseum-skisterical-guide
+  title: "A Guide to the Skisterical Map of Mt. Hood Recreation Area"
+  author: Lloyd Musser
+  publisher: Mt. Hood Museum
+  year: 2021
+  url: https://mthoodmuseum.org/wp-content/uploads/2023/01/A-Guide-to-SKISTERICAL-MAP-of-MT.pdf
+  kind: web
+  note: >-
+    The museum curator's place-by-place history of Gene Gayer's 1940 pictorial map of Mount Hood's
+    south side. Source for the Government Camp buildings, ski areas and roads on the 3D map.
+
+- id: mthoodmuseum-trail-skiing
+  title: "Trail Skiing on Mount Hood – A Long Standing Tradition"
+  author: Lloyd Musser
+  publisher: Mt. Hood Museum
+  url: https://mthoodmuseum.org/trail-skiing-on-mount-hood-a-long-standing-tradition/
+  kind: web
+
+- id: usfs-alpine-trail
+  title: "Alpine Trail"
+  publisher: USDA Forest Service, Mt. Hood National Forest
+  url: https://www.fs.usda.gov/r06/mthood/recreation/trails/alpine-trail
+  kind: web
+
+- id: mounthoodhistory-battle-axe-inn
+  title: "Battle Axe Inn, Government Camp, Oregon"
+  publisher: Mount Hood History
+  url: https://mounthoodhistory.com/mount-hood/battle-axe-inn/
+  kind: web
+
+- id: mounthoodhistory-multorpor
+  title: "Multorpor Mountain History: From Multiple to Multorpor"
+  publisher: Mount Hood History
+  url: https://mounthoodhistory.com/mount-hood/multorpor-mountain-history-from-multiple-to-multorpor/
+  kind: web
+
+- id: openstreetmap
+  title: "OpenStreetMap"
+  author: OpenStreetMap contributors
+  url: https://www.openstreetmap.org/copyright
+  kind: web
+  note: >-
+    Positions of roads, ski trails, peaks and Government Camp's buildings on the 3D map
+    (Open Database License).

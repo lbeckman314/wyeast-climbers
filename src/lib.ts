@@ -17,10 +17,6 @@ export async function getMilestones() {
   return { dated, undated, all };
 }
 
-export async function getExhibits() {
-  return (await getCollection("exhibits", (e) => !e.data.draft)).sort((a, b) => a.data.order - b.data.order);
-}
-
 export async function getPeople() {
   return (await getCollection("people")).sort((a, b) => a.data.order - b.data.order);
 }

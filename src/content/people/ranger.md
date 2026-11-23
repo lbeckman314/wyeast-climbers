@@ -8,4 +8,4 @@ status: sourced
 order: 30
 ---
 
-Ranger was an Australian shepherd mix, born in the summer of 1927 under the porch of the Government Camp Hotel. He is said to have summited Mount Hood more than 500 times in ten years. Wy'east Climbers carried him to his grave near the summit in July 1940. See the exhibit [Ranger, the Climbing Dog](#exhibit-ranger).
+Ranger was an Australian shepherd mix, born in the summer of 1927 under the porch of the Government Camp Hotel. He is said to have summited Mount Hood more than 500 times in ten years. Wy'east Climbers carried him to his grave near the summit in July 1940.
