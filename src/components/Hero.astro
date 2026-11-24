@@ -69,7 +69,7 @@ const routeImages = Object.fromEntries(
     </aside>
 
     <aside class="panel detail" aria-live="polite" hidden>
-      <button type="button" class="close" aria-label="Close details">×</button>
+      <button type="button" class="close" aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       <figure class="card-image" hidden>
         <img alt="" loading="lazy" decoding="async" />
         <figcaption></figcaption>
@@ -96,7 +96,7 @@ const routeImages = Object.fromEntries(
     <div class="tip" role="status" hidden>
       <span class="tip-badge" aria-hidden="true">Tip</span>
       <span class="tip-text"><strong>Click a route or landmark</strong> to fly to it. Drag to turn, scroll to zoom.</span>
-      <button type="button" class="tip-close" aria-label="Dismiss tip">×</button>
+      <button type="button" class="tip-close" aria-label="Dismiss tip"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
 
     <button type="button" class="reset-view" aria-label="Reset view" title="Reset view">
@@ -410,7 +410,9 @@ const routeImages = Object.fromEntries(
   .detail h3 { margin: 0 0 0.4rem; font-size: 1.25rem; }
   .detail .summary { margin: 0 0 0.6rem; }
   .detail .timeline-link { font-weight: 600; }
-  .detail .close { position: absolute; top: 0.4rem; right: 0.5rem; border: 0; background: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--ink-soft); }
+  .detail .close { position: absolute; top: 0.4rem; right: 0.5rem; width: 1.9rem; height: 1.9rem; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; color: var(--ink-soft); }
+  /* the × is drawn (not a text character), so it sits dead centre whatever the font */
+  .detail .close svg, .tip-close svg { width: 0.8rem; height: 0.8rem; }
 
   .view-panel { right: 1rem; top: 1rem; width: 12.5rem; padding-bottom: 0.75rem; }
   /* Esc hides the Routes and Key panels (and brings them back) */
@@ -474,7 +476,7 @@ const routeImages = Object.fromEntries(
   @media (min-width: 761px) and (max-width: 1199px) { .tip { bottom: 7.5rem; max-width: 24rem; } }
   .tip[hidden] { display: none; } /* .tip's display: flex would otherwise override [hidden] */
   .tip-badge { flex: none; font: 700 0.66rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper); background: var(--ink); padding: 0.35em 0.6em; border-radius: 999px; }
-  .tip-close { flex: none; width: 2rem; height: 2rem; margin: -0.2rem -0.1rem -0.2rem 0; border: 0; border-radius: 50%; background: none; color: var(--ink-soft); font-size: 1.15rem; line-height: 1; cursor: pointer; }
+  .tip-close { flex: none; width: 2rem; height: 2rem; margin: -0.2rem -0.1rem -0.2rem 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-soft); cursor: pointer; }
   .tip-close:hover { background: var(--paper-2); color: var(--ink); }
   @keyframes tip-in { from { opacity: 0; translate: 0 0.5rem; } }
   @media (prefers-reduced-motion: reduce) { .tip { animation: none; transition: none; } }
