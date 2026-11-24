@@ -2,7 +2,7 @@
 name: Randall Kester
 membership: member
 sources: [conrad-qa-2015]
-status: sourced
+status: conrad
 order: 10
 ---
 

@@ -4,11 +4,13 @@ import { defineCollection, reference } from "astro:content";
 
 /**
  * How well-supported an entry is.
+ * Ric Conrad is the definitive source: where he and others differ, follow Conrad.
+ * - conrad:      Ric Conrad supports the entry's main claim
  * - sourced:     backed by at least one cited source
- * - conflicting: sources disagree (explain in the body)
+ * - check:       other sources disagree and Conrad's answer isn't confirmed yet (explain in the body)
  * - unverified:  plausible but not yet backed by a source we can cite
  */
-const status = z.enum(["sourced", "conflicting", "unverified"]);
+const status = z.enum(["conrad", "sourced", "check", "unverified"]);
 
 const sources = defineCollection({
   loader: file("src/content/sources.yaml"),

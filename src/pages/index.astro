@@ -49,8 +49,9 @@ for (const l of landmarks)
     if (!sources.some((s) => s.id === id)) throw new Error(`Landmark "${l.id}" cites unknown source "${id}"`);
 const kinds = { book: "Books", article: "Articles", web: "Web pages", film: "Film", archive: "Archives" } as const;
 const counts = {
+  conrad: milestones.filter((m) => m.data.status === "conrad").length,
   sourced: milestones.filter((m) => m.data.status === "sourced").length,
-  conflicting: milestones.filter((m) => m.data.status === "conflicting").length,
+  check: milestones.filter((m) => m.data.status === "check").length,
 };
 
 // ---- Research desk ----
@@ -59,9 +60,31 @@ const toVerify = (body = "") => {
   const m = body.match(/\*To verify:\*\s*([^\n]+)/);
   return m ? m[1].replace(/\*/g, "").trim() : undefined;
 };
-const conflicting = byDate(milestones.filter((m) => m.data.status === "conflicting"));
+const toCheck = byDate(milestones.filter((m) => m.data.status === "check"));
+// Every entry on the site, grouped by how it is sourced.
+const statusNotes = {
+  conrad: "Supported by Ric Conrad, whom we treat as the definitive source. Where others differ, we follow Conrad.",
+  sourced: "Backed by at least one other cited source.",
+  check: "Other sources conflict, and we haven't yet confirmed what Conrad says.",
+  unverified: "Still needs a source.",
+} as const;
+const statusGroups = (Object.keys(statusNotes) as (keyof typeof statusNotes)[])
+  .map((status) => ({
+    status,
+    note: statusNotes[status],
+    entries: [
+      ...byDate(milestones.filter((m) => m.data.status === status)).map((m) => ({
+        // Undated entries aren't on the timeline, so there is nothing to link to.
+        href: dated.includes(m) ? `#${m.id}` : undefined,
+        title: m.data.title,
+        when: m.data.dateLabel,
+      })),
+      ...people.filter((p) => p.data.status === status).map((p) => ({ href: `#person-${p.id}`, title: p.data.name, when: "Person" })),
+    ],
+  }))
+  .filter((g) => g.entries.length > 0);
 const otherNotes = milestones
-  .filter((m) => m.data.status === "sourced" && !m.data.undated && toVerify(m.body))
+  .filter((m) => (m.data.status === "conrad" || m.data.status === "sourced") && !m.data.undated && toVerify(m.body))
   .map((m) => ({ m, note: toVerify(m.body)! }));
 const probable = people.filter((p) => p.data.membership === "probable");
 const thinProfiles = people.filter((p) => (p.body ?? "").includes("Profile needed"));
@@ -89,7 +112,7 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
   <section class="wrap page-section" id="timeline">
     <p class="kicker">Timeline</p>
     <h2 class="section-title">The Wy'east years, and after</h2>
-    <p class="lede">The club's milestones as best we can date them, with the Mount Hood events that shaped them. Every entry shows its sources and how firmly it is established.</p>
+    <p class="lede">The club's milestones as best we can date them, with the Mount Hood events that shaped them. Every entry shows its sources.</p>
 
     <div class="filters" role="group" aria-label="Filter by category">
       <button type="button" data-filter="all" aria-pressed="true">All</button>
@@ -163,7 +186,6 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
                     <p class="kicker">{membershipLabels[p.data.membership]}</p>
                     <h4 class="person-name" id={`bio-name-${p.id}`}>{p.data.name}</h4>
                     <p class="sub">{p.data.years}{p.data.years && p.data.role && " · "}{p.data.role}</p>
-                    <Badge status={p.data.status} />
                   </div>
                   <button type="button" class="pbio-close" aria-label={`Close ${p.data.name}'s bio`}>×</button>
                 </div>
@@ -227,19 +249,13 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
 
       <h3>Images and permissions</h3>
       <p>Photographs appear only with permission from whoever holds the rights, and are always credited.</p>
-
-      <h3>How entries are marked</h3>
-      <dl class="key">
-        <dt><span class="badge sourced">✓ Sourced</span></dt><dd>Backed by at least one cited source.</dd>
-        <dt><span class="badge conflicting">≠ Sources disagree</span></dt><dd>Sources conflict, and the entry explains how.</dd>
-      </dl>
     </div>
 
     <div class="info-panel prose-section" id="sources" role="tabpanel" aria-labelledby="tab-sources">
       <p class="kicker">Sources</p>
       <h2 class="section-title">Sources & research leads</h2>
       <p class="lede">Every claim on this site should trace back to something listed here.</p>
-      <p class="status">Timeline: <strong>{counts.sourced}</strong> entries sourced · <strong>{counts.conflicting}</strong> where sources disagree.</p>
+      <p class="status">Timeline: <strong>{counts.conrad}</strong> entries per Ric Conrad · <strong>{counts.sourced}</strong> from other sources · <strong>{counts.check}</strong> to check with Conrad. Where sources differ, Conrad is definitive.</p>
 
       {Object.entries(kinds).map(([k, label]) => {
         const list = sources.filter((s) => s.data.kind === k);
@@ -281,17 +297,30 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
       <p class="lede">Everything still open on the site, collected in one place and regenerated each time the site is built. If you can answer any of these, please <a href="#contribute">get in touch</a>.</p>
 
       <dl class="stats">
-        <div><dt>Sources disagree</dt><dd>{conflicting.length}</dd></div>
+        <div><dt>Check with Conrad</dt><dd>{toCheck.length}</dd></div>
         <div><dt>Not yet dated</dt><dd>{undated.length}</dd></div>
         <div><dt>Membership to confirm</dt><dd>{probable.length}</dd></div>
       </dl>
 
+      <h3>How entries are sourced</h3>
+      <div class="status-groups">
+        {statusGroups.map((g) => (
+          <details>
+            <summary><Badge status={g.status} /> <span class="small">{g.entries.length} {g.entries.length === 1 ? "entry" : "entries"}</span></summary>
+            <p class="small">{g.note}</p>
+            <ul class="qs">
+              {g.entries.map((x) => <li><span class="when">{x.when}</span>{x.href ? <a href={x.href}>{x.title}</a> : <strong class="q-title">{x.title}</strong>}</li>)}
+            </ul>
+          </details>
+        ))}
+      </div>
+
       <div class="cols">
         <section>
-          <h3>Where sources disagree</h3>
+          <h3>To check with Conrad</h3>
           <ul class="qs">
-            {conflicting.map((m) => (
-              <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a> <Badge status="conflicting" /></li>
+            {toCheck.map((m) => (
+              <li><span class="when">{m.data.dateLabel}</span><a href={`#${m.id}`}>{m.data.title}</a> <Badge status="check" /></li>
             ))}
           </ul>
 
@@ -522,13 +551,18 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
   .stats dd { margin: 0.3rem 0 0; font: 600 2rem/1 var(--display); }
   .cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 3rem; }
   .cols h3:first-child { margin-top: 0; }
+  .status-groups { margin-bottom: 2.5rem; }
+  .status-groups details { padding: 0.75rem 0; border-top: 1px solid var(--rule); }
+  .status-groups summary { cursor: pointer; }
+  .status-groups summary .small { margin-left: 0.4rem; }
+  .status-groups p { margin: 0.6rem 0; }
+  .qs :global(.badge) { margin-left: 0.4rem; vertical-align: 1px; }
   .qs { list-style: none; padding: 0; margin: 0; font: 0.95rem/1.45 var(--sans); }
   .qs li { padding: 0.65rem 0; border-top: 1px solid var(--rule); }
   .qs .q-title { font-weight: 600; }
   .qs .when { display: block; font-size: 0.78rem; color: var(--ink-soft); }
   .qs p { margin: 0.25rem 0 0; color: var(--ink-soft); font-size: 0.88rem; }
   .qs p::first-letter { text-transform: uppercase; }
-  .qs :global(.badge) { margin-left: 0.4rem; vertical-align: 1px; }
   .perm { list-style: none; padding: 0; margin: 0; font: 0.9rem/1.4 var(--sans); }
   .perm li { padding: 0.65rem 0; border-top: 1px solid var(--rule); }
   .perm strong { display: block; font-weight: 500; margin: 0.25rem 0 0.1rem; }
@@ -541,9 +575,6 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
   @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
 
   /* about */
-  .key { display: grid; grid-template-columns: max-content 1fr; gap: 0.6rem 1rem; align-items: center; font-size: 1rem; }
-  .key dd { margin: 0; }
-  @media (max-width: 520px) { .key { grid-template-columns: 1fr; } .key dd { margin-bottom: 0.5rem; } }
 </style>
 
 <script>

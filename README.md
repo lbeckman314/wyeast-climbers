@@ -28,8 +28,11 @@ npm run build    # static output in dist/
 
 Every timeline entry and profile has a `status`:
 
-- `sourced`: backed by a cited source
-- `conflicting`: sources disagree (explain it in the body)
+Ric Conrad is the definitive source: where he and others differ, follow Conrad.
+
+- `conrad`: Ric Conrad supports the entry's main claim
+- `sourced`: backed by another cited source
+- `check`: other sources disagree and Conrad's answer isn't confirmed yet (explain it in the body)
 - `unverified`: still needs a source. Avoid publishing these: the site only carries sourced content.
 
 ### Adding a photo

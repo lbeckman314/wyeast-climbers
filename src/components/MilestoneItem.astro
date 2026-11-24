@@ -1,6 +1,5 @@
 ---
 import { getEntries, render, type CollectionEntry } from "astro:content";
-import Badge from "./Badge.astro";
 import { categoryLabels } from "../lib";
 
 interface Props { m: CollectionEntry<"milestones"> }
@@ -36,7 +35,6 @@ if (bodyHtml && markers) {
   <div class="what">
     <div class="meta">
       <span class={`cat cat-${m.data.category}`}>{categoryLabels[m.data.category]}</span>
-      <Badge status={m.data.status} />
     </div>
     <h3 id={m.id}><a href={`#${m.id}`}>{m.data.title}</a></h3>
     <div class="body">{bodyHtml ? <Fragment set:html={bodyHtml} /> : <Content />}</div>

@@ -8,6 +8,7 @@
   year: 2014
   kind: book
   note: >-
+    The definitive source for this site: where others differ, we follow Conrad.
     The principal history of the club, built on oral histories with surviving
     members, the Wy'east Bulletins, Mazama Annuals and archives, period newspapers
     and summit registers. Most entries on this site should eventually be checked
@@ -27,7 +28,7 @@
   url: https://www.ohs.org/shop/museum-store/books-and-publications/mount-hood-adventures-of-the-wy-east-climbers.cfm
   kind: web
   note: >-
-    Source of the "December 1930" founding date as summarised by a search tool. Re-check the wording directly against the book.
+    Source of the "December 1930" founding date. Re-check the month directly against the book.
 
 - id: pnwsar-history
   title: "The History of PNWSAR"

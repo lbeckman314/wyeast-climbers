@@ -77,10 +77,11 @@ body { position: relative; isolation: isolate; }
 .site-footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font: 0.9rem/1.5 var(--sans); color: var(--ink-soft); }
 .site-footer p { max-width: 46rem; }
 
-/* status badges */
+/* status badges (Research desk) */
 .badge { display: inline-flex; align-items: center; gap: 0.3em; font: 600 0.7rem/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 0.3em 0.55em; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.badge.conrad { color: var(--paper); background: var(--ok); border-color: var(--ok); }
 .badge.sourced { color: var(--ok); }
-.badge.conflicting { color: var(--warn); }
+.badge.check { color: var(--warn); }
 .badge.unverified { color: var(--rust); }
 
 /* placeholders & callouts inside prose */

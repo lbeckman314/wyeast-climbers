@@ -11,8 +11,10 @@ Removed from the site because they have no source yet (recover them from git his
 - **May 2, 1937 ski circuit** by Leuthold & Darr: came from a search-engine summary of notes on Grauer's book. The page itself was down.
 - **1942 "end of an era"**: what actually happened to the club after 1942? *Biggest open question.*
 
-Shown with a **Sources disagree** badge:
-- **Founding date**: Dec 1930 (Conrad, Grauer) vs 1931 (PNWSAR, with the Multnomah Falls Lodge restroom story).
+Status `conrad`, but confirm the month in the book:
+- **Founding date**: 1930 (Conrad interview), December (OHS listing for the book) vs 1931 (PNWSAR).
+
+Status `check` (listed on the Research desk under "To check with Conrad"):
 - **Eliot Glacier Headwall**: 1938 (two sources) vs 1935 (Mountain Project).
 
 Missing dates (in the "Not yet dated" section): the Leuthold Couloir first ascent, the Wy'east Route first climb (Darr, Mount, Calkin), the illuminations, and the reopened routes.

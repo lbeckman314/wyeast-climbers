@@ -3,7 +3,7 @@ name: "The \"Outlaws\": Gary Leech, Bill \"Smoke\" Blanchard, Hubert North"
 membership: associate
 role: Unaffiliated alpinists who roped up with the club
 sources: [conrad-qa-2015]
-status: sourced
+status: conrad
 order: 22
 ---
 
