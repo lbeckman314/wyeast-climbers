@@ -11,7 +11,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
+HERE = pathlib.Path(__file__).parent
+sys.path.insert(0, str(HERE))
 from fetch_dem import CACHE, SUMMIT, lonlat_to_px  # noqa: E402
 
 STEP = 1  # mesh resolution: 1 = every cell (~13 m)
@@ -54,6 +55,50 @@ def sample(img, r, c):
             + img[r0, c0 + 1] * (1 - fr) * fc + img[r0 + 1, c0 + 1] * fr * fc)
 
 
+def route_paths(elev, d, z, sr, sc):
+    """Each route as grid (row, col) points from its low end to the summit, through the waypoints in
+    route-waypoints.json, plus its bearing from the summit (degrees clockwise from north) where its
+    label sits on the model (12% of the way along)."""
+    spec = json.loads((HERE / "route-waypoints.json").read_text())
+    osm = json.loads((CACHE / "osm-routes.json").read_text())["elements"]
+    x0, y0 = float(d["x0"]), float(d["y0"])
+
+    def rc(lat, lon):
+        px, py = lonlat_to_px(lon, lat, z)
+        return (py - y0, px - x0)
+
+    def osm_line(name, above=None):
+        ways = [e for e in osm if e["type"] == "way" and e.get("tags", {}).get("name") == name and e.get("geometry")]
+        if not ways:
+            raise SystemExit(f"route-waypoints.json: no OpenStreetMap way named {name!r} in .cache/osm-routes.json")
+        pts = [rc(g["lat"], g["lon"]) for g in max(ways, key=lambda w: len(w["geometry"]))["geometry"]]
+        if sample(elev, *pts[0]) > sample(elev, *pts[-1]):
+            pts.reverse()  # lowest end first
+        if above is not None:
+            pts = [p for p in pts if sample(elev, *p) >= above]
+        return pts
+
+    paths, bearings = {}, {}
+    for rid, *_ in ROUTES:
+        pts = []
+        for step in spec[rid]:
+            pts += osm_line(step["osm"], step.get("above")) if isinstance(step, dict) else [rc(step[0], step[1])]
+        pts.append((sr, sc))
+        # one point per grid cell along the polyline, then a gentle smoothing that keeps both ends
+        dense = [pts[0]]
+        for a, b in zip(pts, pts[1:]):
+            n = max(1, int(math.dist(a, b)))
+            dense += [(a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n) for t in range(1, n + 1)]
+        arr = np.array(dense)
+        smooth = ndimage.gaussian_filter1d(arr, 3, axis=0, mode="nearest")
+        smooth[0], smooth[-1] = arr[0], arr[-1]
+        paths[rid] = smooth
+        seg = np.hypot(*np.diff(smooth, axis=0).T)
+        at = smooth[np.searchsorted(np.cumsum(seg), 0.12 * seg.sum())]
+        bearings[rid] = round(math.degrees(math.atan2(at[1] - sc, -(at[0] - sr))) % 360)
+    return paths, bearings
+
+
 def main():
     d = np.load(CACHE / "dem.npz")
     elev = ndimage.gaussian_filter(d["elev"].astype(np.float32), 0.7)
@@ -82,31 +127,8 @@ def main():
     base = base * (1 - 0.75 * forest[..., None]) + floor * (0.75 * forest[..., None])
     base *= (0.94 + 0.06 * n2)[..., None]
 
-    # --- routes: climb from ~2000 m on the route's bearing to the summit
-    sm = ndimage.gaussian_filter(elev, 5)
-    gr, gc = np.gradient(sm)
-    paths = {}
-    for rid, _, bearing, _ in ROUTES:
-        b = math.radians(bearing)
-        dist = 300.0
-        while sample(elev, sr - math.cos(b) * dist / spacing, sc + math.sin(b) * dist / spacing) > 2000 and dist < 9000:
-            dist += 30
-        r, c = sr - math.cos(b) * dist / spacing, sc + math.sin(b) * dist / spacing
-        pts = [(r, c)]
-        for _ in range(4000):
-            tr, tc = sr - r, sc - c
-            dd = math.hypot(tr, tc)
-            if dd < 3:
-                break
-            g_r, g_c = sample(gr, r, c), sample(gc, r, c)
-            g = math.hypot(g_r, g_c) or 1
-            w = 0.55 if dd > 40 else 0.1
-            vr, vc = w * g_r / g + (1 - w) * tr / dd, w * g_c / g + (1 - w) * tc / dd
-            n = math.hypot(vr, vc)
-            r, c = r + vr / n, c + vc / n
-            pts.append((r, c))
-        pts.append((sr, sc))
-        paths[rid] = ndimage.gaussian_filter1d(np.array(pts), 6, axis=0, mode="nearest")
+    # --- routes: through real-world waypoints (route-waypoints.json) to the summit
+    paths, bearings = route_paths(elev, d, z, sr, sc)
 
     rows, cols = elev.shape
     for theme, colors in ROUTE_COLORS.items():
@@ -141,8 +163,8 @@ def main():
         "summit_rc": [sr / STEP, sc / STEP],
         "summit_elev": float(elev[sr, sc]),
         "routes": [
-            {"id": rid, "name": name, "kind": kind, "bearing": bearing, "rc": (paths[rid] / STEP).round(2).tolist()}
-            for rid, name, bearing, kind in ROUTES
+            {"id": rid, "name": name, "kind": kind, "bearing": bearings[rid], "rc": (paths[rid] / STEP).round(2).tolist()}
+            for rid, name, _, kind in ROUTES
         ],
     }
     (CACHE / "scene.json").write_text(json.dumps(meta))

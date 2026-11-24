@@ -69,8 +69,10 @@ def main():
     dem = np.load(CACHE / "dem.npz")
     landmarks = []
     for lm in json.loads((ROOT / "src" / "data" / "landmarks.json").read_text()):
-        if lm.get("at") == "summit":
+        if lm.get("at") == "summit" or lm["id"] == "summit":
             x = z = 0.0
+        elif "lat" not in lm:
+            continue  # placed from an OpenStreetMap point or trail instead (see locate() in hero3d.ts)
         else:
             px, py = lonlat_to_px(lm["lon"], lm["lat"], int(dem["z"]))
             x = (px - float(dem["x0"]) - sc) * sp / 1000

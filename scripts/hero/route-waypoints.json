@@ -1,0 +1,55 @@
+{
+  "_about": [
+    "Where each climbing route runs on the 3D model, from its low end toward the summit (the summit is added at the end).",
+    "Each step is either a named point [lat, lon, \"what it is\"] or {\"osm\": \"<way name>\"}, which follows that",
+    "OpenStreetMap line (from scripts/hero/osm-routes.overpass; cached in .cache/osm-routes.json), lowest end first.",
+    "{\"osm\": ..., \"above\": 1900} keeps only the part of the line above that elevation in metres.",
+    "Named features (Illumination Saddle, Pulpit Rock, Horseshoe Rock, the glaciers, ridges and headwalls) are",
+    "OpenStreetMap positions; points between them are placed by hand on those features, so the lines are",
+    "approximate: right face, right features, not a survey of the exact line."
+  ],
+  "south-side": [
+    [45.33111, -121.71, "Timberline Lodge"],
+    [45.344562, -121.709521, "Silcox Hut"],
+    {"osm": "South Side Climbing Route"}
+  ],
+  "leuthold": [
+    [45.3600, -121.7160, "upper Zigzag Glacier"],
+    [45.3682, -121.7086, "Illumination Saddle"],
+    [45.3718, -121.7085, "upper Reid Glacier, below the couloir"],
+    [45.3735, -121.7040, "the couloir, between Yocum Ridge and Hawkins Cliffs"],
+    [45.3741, -121.6995, "summit ridge, west of the top"]
+  ],
+  "sandy": [
+    [45.3845, -121.7185, "lower Sandy Glacier"],
+    [45.3800, -121.7130, "upper Sandy Glacier"],
+    [45.3765, -121.7090, "Sandy Glacier Headwall"],
+    [45.3748, -121.7020, "top of the headwall"]
+  ],
+  "cathedral": [
+    {"osm": "Cathedral Ridge", "above": 1900},
+    [45.3800, -121.7040, "upper Cathedral Ridge"],
+    [45.3760, -121.6985, "below the summit ridge"]
+  ],
+  "north-face": [
+    [45.3930, -121.6960, "between the Coe and Eliot glaciers"],
+    [45.3837, -121.6981, "Pulpit Rock"],
+    [45.3800, -121.6975, "north face gullies"],
+    [45.3764, -121.6975, "beside Horseshoe Rock"]
+  ],
+  "eliot": [
+    [45.3885, -121.6760, "Eliot Glacier"],
+    [45.3815, -121.6865, "upper Eliot Glacier"],
+    [45.3765, -121.6925, "Eliot Glacier headwall"]
+  ],
+  "newton-clark": [
+    [45.3622, -121.6788, "top of Newton Clark Ridge"],
+    [45.3670, -121.6840, "Newton Clark Glacier"],
+    [45.3715, -121.6905, "Newton-Clark headwall"]
+  ],
+  "wyeast": [
+    [45.3500, -121.6985, "White River Glacier"],
+    [45.3600, -121.6960, "upper White River Glacier"],
+    [45.3680, -121.6930, "east of Steel Cliff"]
+  ]
+}

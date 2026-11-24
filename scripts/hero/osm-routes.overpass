@@ -1,0 +1,6 @@
+[out:json][timeout:90];
+(
+  way(around:7000,45.3735,-121.6959)[name~"South Side Climbing Route|Old Chute|West Crater Rim|Cooper Spur Trail|Hogsback|Pearly"];
+  nwr(around:7000,45.3735,-121.6959)[natural~"ridge|arete|glacier|couloir|saddle|cliff|peak|rock|bare_rock"][name];
+);
+out geom;

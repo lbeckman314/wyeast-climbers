@@ -1,5 +1,5 @@
 ---
-name: Ranger (the climbing dog)
+name: Ranger (the climbing dog) 🐶
 years: "1927–1940"
 membership: associate
 role: Mount Hood's most famous four-legged alpinist

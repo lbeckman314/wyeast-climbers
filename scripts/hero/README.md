@@ -70,3 +70,15 @@ the US are derived from USGS 3DEP (public domain). Credit it as "Elevation: USGS
 `public/og.jpg` (1200×630, used for `og:image`) is a frame of the live 3D model over the stage's sky.
 `og-image.cjs` explains how to capture a frame and frames it: `node scripts/hero/og-image.cjs capture.png public/og.jpg`.
 `public/apple-touch-icon.png` is `public/favicon.svg` rendered square at 180×180.
+
+## Climbing routes
+
+Each route's line runs through real-world waypoints listed in `route-waypoints.json`: OpenStreetMap
+features (Illumination Saddle, Pulpit Rock, Horseshoe Rock, Hawkins Ridge, the glaciers and headwalls)
+and, for the South Side and Cathedral Ridge, OpenStreetMap's own lines for the climb and the ridge.
+`prepare.py` threads each route through its waypoints to the summit, and `terrain3d.py` drapes it on the
+terrain. The lines are approximate (right face, right features), not surveys of the exact line.
+
+To refresh the OpenStreetMap data, post `osm-routes.overpass` to the Overpass API and save the result as
+`.cache/osm-routes.json`, then run `prepare.py` and `terrain3d.py`. After moving a route, copy the bearings
+`prepare.py` computes (see `src/data/hero-terrain.json`) into `src/data/routes.ts`.
