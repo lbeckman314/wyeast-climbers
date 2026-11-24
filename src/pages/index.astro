@@ -7,7 +7,8 @@ import MilestoneItem from "../components/MilestoneItem.astro";
 import SourceList from "../components/SourceList.astro";
 import CiteBox from "../components/CiteBox.astro";
 import { getMilestones, getPeople, categoryLabels, membershipLabels } from "../lib";
-import { contactHref, contactLabel } from "../config";
+import { site } from "../config";
+import GitHubIcon from "../components/GitHubIcon.astro";
 import landmarks from "../data/landmarks.json";
 
 
@@ -214,7 +215,7 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
 
       <h3 id="contribute">Contribute</h3>
       <p>Was someone in your family a Wy'easter? Do you have photographs, letters, climbing logs, issues of the <em>Wy'east Bulletin</em>, or a correction? We'd love to hear from you.</p>
-      <p><a class="btn" href={contactHref()}>{contactLabel()}</a></p>
+      <p><a class="btn" href={site.repo}><GitHubIcon />Contribute on GitHub</a></p>
       <p>When you share material, tell us:</p>
       <ul>
         <li>who is pictured or mentioned, and roughly when and where;</li>
@@ -638,9 +639,12 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
     }
     return best;
   };
-  let scrollQueued = false, settleTimer = 0;
+  // Only scrolling the reader starts counts; the track also scrolls when the window resizes.
+  let userScroll = false, scrollQueued = false, settleTimer = 0;
+  for (const ev of ["wheel", "pointerdown", "touchstart"]) track.addEventListener(ev, () => (userScroll = true), { passive: true });
+  document.querySelectorAll(".tl-scroll").forEach((b) => b.addEventListener("click", () => (userScroll = true)));
   track.addEventListener("scroll", () => {
-    if (autoScroll || scrollQueued) return;
+    if (!userScroll || autoScroll || scrollQueued) return;
     scrollQueued = true;
     requestAnimationFrame(() => {
       scrollQueued = false;
@@ -650,7 +654,12 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
     clearTimeout(settleTimer);
     settleTimer = window.setTimeout(() => { if (current) history.replaceState(null, "", `#${current}`); }, 400);
   }, { passive: true });
-  track.addEventListener("scrollend", () => { autoScroll = false; clearTimeout(autoScrollTimer); });
+  track.addEventListener("scrollend", () => {
+    autoScroll = false;
+    clearTimeout(autoScrollTimer);
+    // let the last frame of the scroll pick its event first
+    requestAnimationFrame(() => requestAnimationFrame(() => (userScroll = false)));
+  });
   track.addEventListener("keydown", (e) => {
     const keys: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, Home: -999, End: 999 };
     if (!(e.key in keys)) return;

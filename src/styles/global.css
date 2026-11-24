@@ -53,14 +53,6 @@ p { margin: 0 0 1.1rem; }
 .nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; font: 500 0.95rem/1 var(--sans); }
 .nav a { color: var(--ink-soft); text-decoration: none; padding: 0.35rem 0; border-bottom: 2px solid transparent; }
 .nav a:hover, .nav a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
-.nav { align-items: center; }
-.nav .nav-repo { display: inline-flex; padding: 0.15rem 0; border-bottom: 0; }
-.nav .nav-repo:hover { color: var(--ink); }
-/* phones: the icon sits at the right end of the brand row instead of wrapping onto a line alone */
-@media (max-width: 640px) {
-  .site-header .wrap { position: relative; }
-  .nav .nav-repo { position: absolute; right: 0; top: 1rem; height: 2.4rem; align-items: center; }
-}
 
 main { padding: 2.5rem 0 4rem; }
 
@@ -99,6 +91,7 @@ blockquote.pull { margin: 2.25rem 0; padding: 0 0 0 1.25rem; border-left: 3px so
 .sources-list li { margin-bottom: 0.4rem; }
 
 .btn { display: inline-block; font: 600 0.95rem/1 var(--sans); padding: 0.8em 1.2em; border-radius: 4px; background: var(--accent); color: var(--accent-ink); text-decoration: none; }
+.btn svg { width: 1.2em; height: 1.2em; vertical-align: -0.25em; margin-right: 0.45em; }
 .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

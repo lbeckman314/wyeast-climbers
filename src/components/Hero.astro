@@ -106,10 +106,10 @@ const routeImages = Object.fromEntries(
     <div class="stage-title">
       <p class="kicker">Portland, Oregon · 1930–1942</p>
       <h1>The Wy'east Climbers</h1>
+      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a></p>
     </div>
 
     <p class="esc-note" role="status" aria-live="polite"></p>
-    <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a></p>
   </div>
 </section>
 
@@ -412,10 +412,11 @@ const routeImages = Object.fromEntries(
   .reset-view:hover { background: var(--paper-2); }
   .reset-view:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
 
-  .stage-title { position: absolute; left: 50%; bottom: 2rem; translate: -50% 0; text-align: center; pointer-events: none; }
+  /* title, with the map credits centred under it */
+  .stage-title { position: absolute; left: 50%; bottom: 0.9rem; translate: -50% 0; text-align: center; pointer-events: none; }
   .stage-title .kicker { margin-bottom: 0.3rem; }
   .stage-title h1 { margin: 0; font-size: clamp(1.8rem, 3.6vw, 3rem); text-shadow: 0 0 12px var(--paper), 0 0 3px var(--paper); white-space: nowrap; }
-  .credit { position: absolute; right: 1rem; bottom: 0.6rem; margin: 0; font: 0.7rem/1 var(--sans); color: var(--ink-soft); }
+  .credit { margin: 0.55rem 0 0; font: 0.7rem/1.3 var(--sans); color: var(--ink-soft); pointer-events: auto; }
   .credit .hint { font-weight: 600; color: var(--ink); }
 
   /* back to the map */
@@ -446,7 +447,7 @@ const routeImages = Object.fromEntries(
   }
   .tip.gone { opacity: 0; translate: 0 0.5rem; pointer-events: none; }
   /* mid-width screens: not enough room beside the title, so sit just above its level */
-  @media (min-width: 761px) and (max-width: 1199px) { .tip { bottom: 5.25rem; max-width: 24rem; } }
+  @media (min-width: 761px) and (max-width: 1199px) { .tip { bottom: 7.5rem; max-width: 24rem; } }
   .tip[hidden] { display: none; } /* .tip's display: flex would otherwise override [hidden] */
   .tip-badge { flex: none; font: 700 0.66rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper); background: var(--ink); padding: 0.35em 0.6em; border-radius: 999px; }
   .tip-close { flex: none; width: 2rem; height: 2rem; margin: -0.2rem -0.1rem -0.2rem 0; border: 0; border-radius: 50%; background: none; color: var(--ink-soft); font-size: 1.15rem; line-height: 1; cursor: pointer; }
@@ -483,12 +484,12 @@ const routeImages = Object.fromEntries(
     .hero3d-summit strong { font-size: 1rem; }
     .detail { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: auto; z-index: 3; }
     .card-image img { aspect-ratio: 2 / 1; } /* shorter photo so the bottom card leaves the map visible */
-    .stage-title { bottom: 2rem; }
+    /* bottom of the stage, from the bottom up: credits, title, then the tip and reset button side by side */
+    .stage-title { bottom: 0.6rem; width: calc(100% - 1.5rem); }
     .stage-title .kicker { display: none; }
-    .credit { display: none; }
-    /* just above the title, leaving room for the reset button on the right */
-    .reset-view { right: 0.75rem; bottom: 2rem; width: 4rem; height: 4rem; }
-    .tip { bottom: 3.9rem; left: 0.75rem; right: 3.6rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
+    .credit { margin-top: 0.4rem; font-size: 0.65rem; }
+    .reset-view { right: 0.75rem; bottom: 5rem; width: 3.25rem; height: 3.25rem; }
+    .tip { bottom: 5rem; left: 0.75rem; right: 4.75rem; min-height: 3.25rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
     .has-detail .stage-title, .has-detail .reset-view { visibility: hidden; }
   }
 </style>

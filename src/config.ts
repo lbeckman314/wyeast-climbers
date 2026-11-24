@@ -5,23 +5,12 @@ export const site = {
   title: "Wy'east Climbers",
   tagline: "A Living History",
   url: "https://wyeastclimbers.com",
-  /** The site's source code, linked from the header. */
+  /** The site's source code; the Contribute section links here. */
   repo: "https://github.com/lbeckman314/wyeast-climbers",
 
-  /**
-   * Who runs the site. The contact button reads "Email {name}" and writes to `email`.
-   * Leave `name` empty to show the address itself ("Email hello@…").
-   * The name also goes into the page's <meta name="author">.
-   */
+  /** Who runs the site; goes into the page's <meta name="author"> (left out when empty). */
   author: {
     name: "",
-    email: "hello@wyeastclimbers.com",
   },
 };
 
-/** Text for the contact button: the author's name if set, otherwise the address. */
-export const contactLabel = () => `Email ${site.author.name || site.author.email}`;
-
-/** mailto: link to the author, with a subject line filled in. */
-export const contactHref = (subject = "Wy'east Climbers history") =>
-  `mailto:${site.author.email}?subject=${encodeURIComponent(subject)}`;

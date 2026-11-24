@@ -24,7 +24,7 @@ Also worth checking:
 - Whether Bill Hackett (North Face, 1936) was a Wy'easter.
 
 ## 2. Things only you can decide
-- **Contact email and site author**: set `author.name` and `author.email` in `src/config.ts`. The About page's contact button uses them (it shows the placeholder `hello@wyeastclimbers.com` until then).
+- **Site author and repository**: set `author.name` in `src/config.ts` (it goes into the page's author meta tag). The About section's Contribute button links to `repo` there.
 - **Site voice and "we"**: the copy speaks as "we" (the project). Who is behind it publicly?
 - **Draft banner**: remove from `src/layouts/Base.astro` when you're ready.
 - **Separate repo vs. subfolder**: see README → Deploying.
