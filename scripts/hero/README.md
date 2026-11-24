@@ -64,3 +64,9 @@ position on the model is recomputed.
 
 Elevation comes from [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/), which in
 the US are derived from USGS 3DEP (public domain). Credit it as "Elevation: USGS 3DEP".
+
+## Link-preview image
+
+`public/og.jpg` (1200×630, used for `og:image`) is a frame of the live 3D model over the stage's sky.
+`og-image.cjs` explains how to capture a frame and frames it: `node scripts/hero/og-image.cjs capture.png public/og.jpg`.
+`public/apple-touch-icon.png` is `public/favicon.svg` rendered square at 180×180.
