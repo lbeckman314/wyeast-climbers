@@ -161,6 +161,7 @@ const routeImages = Object.fromEntries(
     back.setAttribute("aria-label", backText);
     back.title = backText;
     stage.classList.toggle("has-detail", !!item);
+    queueMicrotask(updateInsets);
     if (!item) stage.classList.remove("has-image");
     if (!item) return;
     detail.className = `panel detail ${r ? r.kind : "landmark"}`;
@@ -285,9 +286,31 @@ const routeImages = Object.fromEntries(
     stage.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus({ preventScroll: true });
   });
 
+  // Parts of the stage covered by the header (laid over its top) and by an open card. The model frames
+  // itself, and the selected route or landmark, in what's left.
+  const siteHeader = document.querySelector<HTMLElement>(".site-header");
+  function coverage() {
+    const s = stage.getBoundingClientRect();
+    const top = siteHeader ? Math.max(0, Math.round(siteHeader.getBoundingClientRect().bottom - s.top)) : 0;
+    stage.style.setProperty("--ui-top", `${top}px`);
+    const out = { top, right: 0, bottom: 0, left: 0 };
+    if (!detail.hidden) {
+      const d = detail.getBoundingClientRect();
+      // a card across the stage (phones) covers its bottom; otherwise it covers the left side
+      if (d.width > s.width * 0.6) out.bottom = Math.max(0, Math.round(s.bottom - d.top));
+      else out.left = Math.max(0, Math.round(d.right - s.left));
+    }
+    return out;
+  }
+  const updateInsets = () => { const c = coverage(); hero?.setInsets(c); };
+  coverage();
+  new ResizeObserver(updateInsets).observe(detail); // the card grows when its photo loads
+  addEventListener("resize", updateInsets);
+
   const start = () =>
     import("../scripts/hero3d")
       .then((m) => m.mountHero(view, {
+        insets: coverage(),
         onSelect: show,
         onInteract: dismissTip,
         // chips for routes and landmarks on the far side of the mountain fade (phones; see CSS)
@@ -325,7 +348,8 @@ const routeImages = Object.fromEntries(
   .hero3d canvas:active { cursor: grabbing; }
   .hero3d.ready canvas { opacity: 1; }
 
-  .stage-ui { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  /* --ui-top: the height of the site header laid over the top of the stage, so the panels sit below it */
+  .stage-ui { position: absolute; inset: var(--ui-top, 0px) 0 0 0; pointer-events: none; z-index: 2; }
   /* soft fade behind the title so it stays readable over the forest */
   .stage-ui::before {
     content: ""; position: absolute; inset: auto 0 0 0; height: 26%; pointer-events: none;

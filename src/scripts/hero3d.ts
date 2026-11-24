@@ -198,12 +198,18 @@ export interface HeroController {
   setLabels(on: boolean): void;
   setTrees(on: boolean): void;
   setContours(on: boolean): void;
+  /** Parts of the stage covered by page UI (header, open card), in CSS px. The model frames
+   *  itself, and whatever is selected, in the part that's left. */
+  setInsets(insets: Partial<Insets>): void;
 }
+export interface Insets { top: number; right: number; bottom: number; left: number }
 
 export async function mountHero(
   container: HTMLElement,
   opts: {
     onSelect?: (id: string | null) => void;
+    /** starting insets (see HeroController.setInsets) */
+    insets?: Partial<Insets>;
     onInteract?: () => void;
     /** ids of the routes and landmarks on the side of the mountain facing the camera (sent when it changes) */
     onFacing?: (ids: string[]) => void;
@@ -876,17 +882,49 @@ export async function mountHero(
     setLabels(on) { labels.classList.toggle("off", !on); },
     setTrees(on) { trees.visible = on; render(); },
     setContours(on) { mats.terrain.uniforms.uLines.value = on ? 1 : 0; render(); },
+    setInsets(next) {
+      const topChanged = next.top !== undefined && next.top !== insets.top;
+      Object.assign(insets, next);
+      if (topChanged) frame(); // the opening view's fit depends on the space under the header
+      offsetMoving = true;
+    },
+  };
+
+  // The picture is shifted (a view offset) so the model centres in the part of the stage that page
+  // UI leaves free: up a little for the title along the bottom, down for the header over the top,
+  // and away from an open card. It glides there when that changes.
+  const insets: Insets = { top: 0, right: 0, bottom: 0, left: 0, ...opts.insets };
+  const offset = { x: 0, y: 0 };
+  let offsetMoving = false;
+  const offsetTarget = () => {
+    const h = container.clientHeight;
+    return { x: -(insets.left - insets.right) / 2, y: h * 0.07 - (insets.top - insets.bottom) / 2 };
+  };
+  const applyOffset = () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    camera.setViewOffset(w, h, offset.x, offset.y, w, h);
+    camera.updateProjectionMatrix();
+  };
+  const stepOffset = () => {
+    const t = offsetTarget();
+    const k = reduceMotion ? 1 : 0.14;
+    offset.x += (t.x - offset.x) * k;
+    offset.y += (t.y - offset.y) * k;
+    if (Math.abs(t.x - offset.x) < 0.5 && Math.abs(t.y - offset.y) < 0.5) { offset.x = t.x; offset.y = t.y; offsetMoving = false; }
+    applyOffset();
   };
 
   const frame = () => {
     const w = container.clientWidth, h = container.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // Shift the picture up so the title along the bottom of the stage has room.
-    camera.setViewOffset(w, h, 0, h * 0.07, w, h);
+    Object.assign(offset, offsetTarget());
+    applyOffset();
     const polar = HOME_POLAR;
-    const vfov = THREE.MathUtils.degToRad(camera.fov);
-    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+    // fit the opening view to the space below the header (as if the stage were that tall)
+    const vfov0 = THREE.MathUtils.degToRad(camera.fov);
+    const vfov = 2 * Math.atan(Math.tan(vfov0 / 2) * Math.max(0.4, (h - insets.top) / h));
+    const hfov = 2 * Math.atan(Math.tan(vfov0 / 2) * camera.aspect);
     const halfV = ((R * 2 * Math.cos(polar) + peak * Math.sin(polar)) / 2) * 1.12;
     const halfH = R * 1.0;
     const dist = Math.max(halfV / Math.tan(vfov / 2), halfH / Math.tan(hfov / 2));
@@ -966,6 +1004,7 @@ export async function mountHero(
   renderer.setAnimationLoop(() => {
     if (!visible || document.hidden) return;
     if (tween) { stepTween(); render(); }
+    if (offsetMoving) { stepOffset(); render(); }
     if (puffs.length) { stepSmoke(performance.now() / 1000); render(); }
     controls.update();
   });
