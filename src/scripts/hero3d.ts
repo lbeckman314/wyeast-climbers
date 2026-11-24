@@ -327,6 +327,7 @@ export async function mountHero(
   const labels = document.createElement("div");
   labels.className = "hero3d-labels";
   for (const r of terrain.routes) {
+    if (!routeInfo.some((i) => i.id === r.id)) continue; // only routes listed in src/data/routes.ts
     const pts = r.points.map(([x, , z]) => new THREE.Vector3(x, toY(elev(x, z)) + 0.035, z));
     if (pts.length < 2) continue;
     const curve = new THREE.CatmullRomCurve3(pts);

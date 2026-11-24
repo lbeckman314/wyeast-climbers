@@ -2,12 +2,17 @@
 
 Everett Darr is temporarily off the site until his role is corroborated (see the Research desk note on
 `1937-first-patroller`: a correction credits Hank Lewis, not Darr, with pushing for mountain rescue and the ski patrol).
+Everything that rested only on his *American Alpine Journal* obituary is held back too: the Wy'east Route's
+first-ascent credit (and the route on the map), James Mount's profile, and that part of Ralph Calkin's.
 Nothing in this folder is built; the content loaders only read `src/content/`.
 
 ## To restore
 
-1. Move `people/everett-darr.md` and `milestones/1981-darr-dies.md` back into `src/content/` (same subfolders).
-2. Put back the wording below (each change shows the original, then what it says now), adjusting it to whatever the sources show.
+1. Move `people/everett-darr.md`, `people/james-mount.md`, `milestones/1981-darr-dies.md` and
+   `milestones/undated-wyeast-route.md` back into `src/content/` (same subfolders).
+2. Put the obituary back in `src/content/sources.yaml` and the Wy'east Route back in
+   `src/data/routes.ts` (both below). The 3D model draws only routes listed there.
+3. Put back the wording below (each change shows the original, then what it says now), adjusting it to whatever the sources show.
 
 - `src/content/people/ida-darr.md`
   - was: with her husband Everett, founded Portland's Mountain Shop
@@ -54,3 +59,27 @@ Nothing in this folder is built; the content loaders only read `src/content/`.
 - `src/data/landmarks.json`
   - was: After a 1950 fire, Everett Darr and Carl Reynolds built a lodge and lifts there as the Multorpor Ski Area.
   - now: After a 1950 fire, a lodge and lifts were built there as the Multorpor Ski Area.
+
+- `src/content/people/ralph-calkin.md`
+  - was: sources: [aac-darr-1982, ranger-mhh]
+  - now: sources: [ranger-mhh]
+- `src/content/people/ralph-calkin.md`
+  - was: Ralph Calkin is credited, with James Mount, as one of the three climbers who made the first climb of Mount Hood's **Wy'east Route**. He carried
+  - now: Ralph Calkin carried
+
+### `src/content/sources.yaml`
+
+```yaml
+- id: aac-darr-1982
+  title: "Everett L. Darr, 1907–1981 (In Memoriam)"
+  publisher: American Alpine Journal
+  year: 1982
+  url: https://publications.americanalpineclub.org/articles/12198233800/Everett-L-Darr-1907-1981
+  kind: article
+```
+
+### `src/data/routes.ts` (after the Newton-Clark Headwall)
+
+```ts
+  { id: "wyeast", name: "Wy'east Route", bearing: 135, kind: "first-ascent", summary: "James Mount, Ralph Calkin & a third Wy'easter.", milestone: "undated-wyeast-route" },
+```
