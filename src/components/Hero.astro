@@ -492,4 +492,9 @@ const routeImages = Object.fromEntries(
     .tip { bottom: 5rem; left: 0.75rem; right: 4.75rem; min-height: 3.25rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
     .has-detail .stage-title, .has-detail .reset-view { visibility: hidden; }
   }
+  /* On touch screens the model takes every swipe, so the title band is where a swipe scrolls the page.
+     It stretches across the stage and down to its bottom edge to make an easy target. */
+  @media (pointer: coarse) {
+    .stage-title { pointer-events: auto; touch-action: pan-y; left: 0; right: 0; bottom: 0; width: auto; translate: none; padding: 0.4rem 0.75rem 0.6rem; }
+  }
 </style>

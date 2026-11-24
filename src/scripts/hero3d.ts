@@ -729,7 +729,9 @@ export async function mountHero(
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   controls.autoRotate = !reduceMotion;
   controls.autoRotateSpeed = -0.35;
-  canvas.style.touchAction = "pan-y"; // one-finger vertical swipes scroll the page; pinch zooms
+  // Every touch on the model turns, tilts or zooms it; the page scrolls from the title band along the
+  // bottom of the stage (see .stage-title in Hero.astro) and the header.
+  canvas.style.touchAction = "none";
   let wantRotate = !reduceMotion;
   let resumeTimer = 0;
   controls.addEventListener("start", () => { controls.autoRotate = false; tween = null; clearTimeout(resumeTimer); opts.onInteract?.(); });
