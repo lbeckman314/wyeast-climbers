@@ -849,20 +849,31 @@ export async function mountHero(
         return;
       }
       controls.autoRotate = false;
+      // Picking something never zooms out: if the reader is already closer than the usual view,
+      // the camera keeps its distance (and, for a landmark, its angle) and just glides over to it.
+      const now = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
       if (landmarkPos.has(selected)) {
-        // look at the landmark from its own side of the mountain (the summit: from where we are)
         const pos = landmarkPos.get(selected)!;
+        const dist = fitDist * 0.5;
+        if (now.radius < dist) {
+          flyTo(pos.clone(), new THREE.Spherical(now.radius, now.phi, now.theta));
+          return;
+        }
+        // look at the landmark from its own side of the mountain (the summit: from where we are)
         const theta = selected === "summit"
-          ? new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)).theta
+          ? now.theta
           : bearingToTheta((THREE.MathUtils.radToDeg(Math.atan2(pos.x, -pos.z)) + 360) % 360);
         // aim close to the landmark itself so it lands near the middle of the view
-        flyTo(home.clone().lerp(pos, 0.9), new THREE.Spherical(fitDist * 0.5, THREE.MathUtils.degToRad(62), theta));
+        flyTo(home.clone().lerp(pos, 0.9), new THREE.Spherical(dist, THREE.MathUtils.degToRad(62), theta));
         return;
       }
       const o = routeObjs.get(selected)!;
       const a = anchors.find((x) => x.id === selected)!;
-      const target = home.clone().lerp(o.focus, 0.55);
-      flyTo(target, new THREE.Spherical(fitDist * 0.52, THREE.MathUtils.degToRad(64), bearingToTheta(a.bearing)));
+      const dist = fitDist * 0.52;
+      const close = now.radius < dist;
+      // turn to the route's face either way; when zoomed in, centre on the route itself
+      const target = close ? o.focus.clone() : home.clone().lerp(o.focus, 0.55);
+      flyTo(target, new THREE.Spherical(close ? now.radius : dist, THREE.MathUtils.degToRad(64), bearingToTheta(a.bearing)));
     },
     zoomBy(f) {
       const off = camera.position.clone().sub(controls.target);
