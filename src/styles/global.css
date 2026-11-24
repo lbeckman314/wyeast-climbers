@@ -64,12 +64,14 @@ p { margin: 0 0 1.1rem; }
 main { padding: 2.5rem 0 4rem; }
 
 /* page decoration: the brand mark, large and faint, behind the bottom-right of the page */
-body { position: relative; isolation: isolate; overflow-x: clip; }
+body { position: relative; isolation: isolate; }
+/* The box spans the page and clips, so the mark can run past the right edge without widening the
+   page (phones would otherwise zoom out to fit it). Size the mark on the svg. */
 .page-mark {
-  position: absolute; z-index: -1; right: -8vw; bottom: 0; width: clamp(25rem, 80vw, 90rem);
+  position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; overflow: hidden;
   color: var(--ink); opacity: 0.07; pointer-events: none; user-select: none;
 }
-.page-mark svg { display: block; width: 100%; height: auto; }
+.page-mark svg { display: block; width: clamp(25rem, 80vw, 90rem); height: auto; margin: 0 -8vw 0 auto; }
 
 /* footer */
 .site-footer { border-top: 1px solid var(--rule); padding: 2rem 0 3rem; font: 0.9rem/1.5 var(--sans); color: var(--ink-soft); }
