@@ -187,11 +187,6 @@ const routeImages = Object.fromEntries(
   const buttons = [...stage.querySelectorAll<HTMLButtonElement>("[data-route]")];
   let hero: HeroController | undefined;
 
-  // The stage fills the viewport below the site header.
-  const fit = () => stage.style.setProperty("--stage-top", `${stage.getBoundingClientRect().top + scrollY}px`);
-  fit();
-  addEventListener("resize", fit);
-
   type CardImg = { src: string; alt: string; credit: string; license: string; url?: string };
   type LandmarkCard = { id: string; name: string; summary: string; milestone?: string; trail?: boolean; kind?: string; image?: CardImg; sources: { title: string; href: string }[] };
   const landmarkCards: LandmarkCard[] = JSON.parse(stage.dataset.landmarks ?? "[]");
