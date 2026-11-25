@@ -4,6 +4,7 @@
 // the site title. The rest of the page continues below: scrolling over the lower part of the
 // stage (from the top of the site title down) scrolls the page instead of zooming the model.
 // Falls back to the static render in public/hero/ when WebGL isn't available.
+import { execSync } from "node:child_process";
 import { getCollection } from "astro:content";
 import { routes, kindLabels } from "../data/routes";
 import landmarks from "../data/landmarks.json";
@@ -13,6 +14,14 @@ import { cardImage, type CardImage } from "../card-images";
 // ski trails get their own heading in the list
 const places = landmarks.filter((l) => !("trail" in l));
 const skiTrails = landmarks.filter((l) => "trail" in l);
+
+// "Updated": the date of the site's latest commit (the build date if git isn't available)
+let updated = new Date();
+try {
+  const iso = execSync("git log -1 --format=%cI", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  if (iso) updated = new Date(iso);
+} catch {}
+const updatedLabel = updated.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
 
 const order = ["first-ascent", "reopened", "standard"] as const;
 const sorted = [...routes].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
@@ -158,7 +167,7 @@ const routeImages = Object.fromEntries(
     <div class="stage-title">
       <p class="kicker">Portland, Oregon · 1930–1942</p>
       <h1>The Wy'east Climbers</h1>
-      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a><span class="range-note"> · Rivers: Natural Earth · Map to scale, mountains enlarged</span></p>
+      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a><span class="range-note"> · Rivers: Natural Earth · Map to scale, mountains enlarged</span> · <span class="updated">Updated <time datetime={updated.toISOString()}>{updatedLabel}</time></span></p>
     </div>
 
     <p class="esc-note" role="status" aria-live="polite"></p>
@@ -606,6 +615,10 @@ const routeImages = Object.fromEntries(
 
   .legend .road i {
     border-top: 4px solid #8b847b;
+  }
+
+  .credit .updated {
+    white-space: nowrap;
   }
 
   .credit a {

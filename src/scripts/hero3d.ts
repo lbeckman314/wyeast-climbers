@@ -773,18 +773,93 @@ export async function mountHero(
   let wantRotate = !reduceMotion;
   const canTurn = () => wantRotate && !selected && mode !== "range";
   let resumeTimer = 0;
-  controls.addEventListener("start", () => { controls.autoRotate = false; tween = null; levelOff = null; clearTimeout(resumeTimer); opts.onInteract?.(); });
+  controls.addEventListener("start", () => {
+    if (levelOff) return; // between mountains: lifting one finger of a pinch also "starts" a drag
+    controls.autoRotate = false; tween = null; clearTimeout(resumeTimer); opts.onInteract?.(); });
   controls.addEventListener("end", () => {
     if (canTurn()) resumeTimer = window.setTimeout(() => (controls.autoRotate = canTurn()), 6000);
   });
 
-  // The wheel zooms only while the whole stage is on screen. Zooming out past the full
-  // view (or scrolling while the stage is partly scrolled away) scrolls the page instead.
+  // Zooming out past a mountain's full view opens all the mountains; zooming in on one of them there
+  // opens it. Zooming out past all the mountains (or scrolling while the stage is partly scrolled
+  // away) scrolls the page instead.
+  const camDist = () => camera.position.distanceTo(controls.target);
+  const atMax = () => camDist() >= controls.maxDistance * 0.995;
+  let opening = false;   // a zoom has asked for another view, which may still be loading
+  let zoomFailed = false; // the other mountains couldn't load: leave the wheel to the page
+  const zoomTo = async (next: string) => {
+    if (opening) return;
+    opening = true;
+    try { await controller.open(next); }
+    catch { zoomFailed = true; setTimeout(() => (zoomFailed = false), 10000); }
+    opening = false;
+  };
+  /** in the all-mountains view: the mountain a zoom at this point on screen is heading for */
+  const zoomTarget = (x: number, y: number) => {
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1), camera);
+    return peakAt(1.5);
+  };
+  const ZOOM_IN = 0.8; // how far in (of the all-mountains distance) opens the mountain being zoomed at
+
+  let pushed = 0;        // how far the wheel has turned since the view reached its limit
+  let wheelHold = false; // swallow the rest of a scroll (trackpads keep going) after it changes the view
+  let wheelTimer = 0;
   container.addEventListener("wheel", (e) => {
-    const top = container.getBoundingClientRect().top;
-    const atMax = camera.position.distanceTo(controls.target) >= controls.maxDistance * 0.995;
-    if (top < -4 || (e.deltaY > 0 && atMax)) e.stopPropagation();
-  }, { capture: true, passive: true });
+    const swallow = () => { e.preventDefault(); e.stopPropagation(); };
+    if (container.getBoundingClientRect().top < -4) return e.stopPropagation();
+    clearTimeout(wheelTimer);
+    wheelTimer = window.setTimeout(() => { wheelHold = false; pushed = 0; }, 220);
+    if (wheelHold || opening || levelOff) return swallow();
+    const out = e.deltaY > 0;
+    if (out && atMax()) {
+      if (mode === "range" || zoomFailed) return e.stopPropagation();
+      swallow();
+      pushed += e.deltaY * (e.ctrlKey ? 10 : e.deltaMode === 1 ? 33 : 1);
+      if (pushed > 90) { wheelHold = true; pushed = 0; void zoomTo("range"); }
+      return;
+    }
+    pushed = 0;
+    if (e.deltaY < 0 && mode === "range" && camDist() < rangeDist * ZOOM_IN) {
+      const at = zoomTarget(e.clientX, e.clientY);
+      if (at) { swallow(); wheelHold = true; void zoomTo(at); }
+    }
+  }, { capture: true, passive: false });
+
+  // The same with a pinch. Fingers still down when the view changes are ignored until they lift.
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinchFrom = 0; // spread of the fingers when the view reached its limit (0: not there yet)
+  let lastSpread = 0;
+  let onLift: (() => void) | null = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pinchFrom = lastSpread = 0;
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    const t = touches.get(e.pointerId);
+    if (!t) return;
+    t.x = e.clientX; t.y = e.clientY;
+    if (touches.size !== 2 || opening || levelOff || !controls.enabled) return;
+    const [a, b] = [...touches.values()];
+    const spread = Math.hypot(a.x - b.x, a.y - b.y);
+    const closing = spread < lastSpread;
+    lastSpread = spread;
+    if (mode !== "range") {
+      if (!atMax()) pinchFrom = 0;
+      else if (!pinchFrom) pinchFrom = spread;
+      else if (closing && spread < pinchFrom * 0.85) { pinchFrom = 0; void zoomTo("range"); }
+    } else if (!closing && camDist() < rangeDist * ZOOM_IN) {
+      const at = zoomTarget((a.x + b.x) / 2, (a.y + b.y) / 2);
+      if (at) void zoomTo(at);
+    }
+  });
+  for (const type of ["pointerup", "pointercancel"] as const)
+    addEventListener(type, (e) => {
+      touches.delete(e.pointerId);
+      pinchFrom = lastSpread = 0;
+      if (!touches.size && onLift) { const f = onLift; onLift = null; f(); }
+    });
 
   // ---------------------------------------------------------------- the surrounding mountains
   let mode = "hood"; // "hood", "range" (all of them) or the id of another mountain
@@ -863,10 +938,11 @@ export async function mountHero(
     measure();
   })().catch((e) => { rangeLoading = null; throw e; }));
   // in the all-mountains view: the mountain under the pointer (nearest centre within reach)
-  const peakAt = () => {
+  // reach: how far past a mountain's edge still counts
+  const peakAt = (reach = 1) => {
     const at = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -toY(1600)), new THREE.Vector3());
     if (!at) return null;
-    let best: string | null = null, bd = 1;
+    let best: string | null = null, bd = reach;
     for (const c of [{ id: "hood", center: new THREE.Vector3(), radius: R }, ...peaks]) {
       const dd = Math.hypot(at.x - c.center.x, at.z - c.center.z) / (c.radius * 0.8);
       if (dd < bd) { bd = dd; best = c.id; }
@@ -1100,8 +1176,10 @@ export async function mountHero(
       controls.minDistance = 0.5;
       controls.maxDistance = 600;
       controls.enabled = false;
+      onLift = null;
       levelOff = () => {
-        controls.enabled = true;
+        const free = () => (controls.enabled = true);
+        if (touches.size) onLift = free; else free();
         setLimits();
         controls.autoRotate = canTurn();
         render();
