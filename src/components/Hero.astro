@@ -6,6 +6,7 @@
 // Falls back to the static render in public/hero/ when WebGL isn't available.
 import { execSync } from "node:child_process";
 import { getCollection } from "astro:content";
+import { site } from "../config";
 import { routes, kindLabels } from "../data/routes";
 import landmarks from "../data/landmarks.json";
 import range from "../data/range.json";
@@ -15,11 +16,12 @@ import { cardImage, type CardImage } from "../card-images";
 const places = landmarks.filter((l) => !("trail" in l));
 const skiTrails = landmarks.filter((l) => "trail" in l);
 
-// "Updated": the date of the site's latest commit (the build date if git isn't available)
+// "Updated": the site's latest commit, with its date (or the build date, unlinked, if git isn't available)
 let updated = new Date();
+let commit = "";
 try {
-  const iso = execSync("git log -1 --format=%cI", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
-  if (iso) updated = new Date(iso);
+  const [hash, iso] = execSync("git log -1 --format=%H,%cI", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim().split(",");
+  if (iso) { updated = new Date(iso); commit = hash; }
 } catch {}
 const updatedLabel = updated.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
 
@@ -167,7 +169,7 @@ const routeImages = Object.fromEntries(
     <div class="stage-title">
       <p class="kicker">Portland, Oregon · 1930–1942</p>
       <h1>The Wy'east Climbers</h1>
-      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a><span class="range-note"> · Rivers: Natural Earth · Map to scale, mountains enlarged</span> · <span class="updated">Updated <time datetime={updated.toISOString()}>{updatedLabel}</time></span></p>
+      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a><span class="range-note"> · Rivers: Natural Earth · Map to scale, mountains enlarged</span> · <span class="updated">Updated <time datetime={updated.toISOString()}>{updatedLabel}</time>{commit && <Fragment> (<a href={`${site.repo}/commit/${commit}`} rel="noopener" aria-label={`Latest commit, ${commit.slice(0, 7)}, on GitHub`}>{commit.slice(0, 7)}</a>)</Fragment>}</span></p>
     </div>
 
     <p class="esc-note" role="status" aria-live="polite"></p>
