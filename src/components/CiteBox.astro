@@ -9,9 +9,28 @@ const url = new URL(Astro.url.pathname + (anchor ? `#${anchor}` : ""), Astro.sit
   <button type="button" class="copy">Copy citation</button>
 </aside>
 <style>
-  .cite { margin-top: 3rem; padding: 1rem 1.25rem; border: 1px solid var(--rule); border-radius: 6px; font: 0.88rem/1.5 var(--sans); }
-  .citation { margin: 0 0 0.75rem; word-break: break-word; }
-  .copy { font: 600 0.8rem/1 var(--sans); padding: 0.5em 0.8em; border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 4px; cursor: pointer; }
+  .cite {
+    margin-top: 3rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    font: 0.88rem/1.5 var(--sans);
+  }
+
+  .citation {
+    margin: 0 0 0.75rem;
+    word-break: break-word;
+  }
+
+  .copy {
+    font: 600 0.8rem/1 var(--sans);
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+  }
 </style>
 <script>
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });

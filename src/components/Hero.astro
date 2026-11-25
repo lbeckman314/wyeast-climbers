@@ -411,224 +411,962 @@ const routeImages = Object.fromEntries(
 
   /* ---------- stage ---------- */
   .stage {
-    position: relative; overflow: hidden; background: var(--hero-bg);
-    height: calc(100svh - var(--stage-top, 7rem)); min-height: 480px;
+    position: relative;
+    overflow: hidden;
+    background: var(--hero-bg);
+    /* fills the screen: the site header floats over its top (set here, not measured in script, so it
+         can't be caught mid-load and left short) */
+    height: 100svh;
+    min-height: 480px;
     border-bottom: 1px solid var(--rule);
   }
-  .stage.no-webgl { background: var(--paper-2) var(--hero-poster) center 70% / cover no-repeat; }
-  .stage.no-webgl .hint, .stage.no-webgl .view-panel, .stage.no-webgl .reset-view, .stage.no-webgl :is(.expand-view, .compass) { display: none; }
-  .hero3d { position: absolute; inset: 0; }
-  .hero3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 0.8s ease; cursor: grab; }
-  .hero3d canvas:active { cursor: grabbing; }
-  .hero3d.ready canvas { opacity: 1; }
+
+  .stage.no-webgl {
+    background: var(--paper-2) var(--hero-poster) center 70% / cover no-repeat;
+  }
+
+  .stage.no-webgl .hint,
+  .stage.no-webgl .view-panel,
+  .stage.no-webgl .reset-view,
+  .stage.no-webgl :is(.expand-view, .compass) {
+    display: none;
+  }
+
+  .hero3d {
+    position: absolute;
+    inset: 0;
+  }
+
+  .hero3d canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    cursor: grab;
+  }
+
+  .hero3d canvas:active {
+    cursor: grabbing;
+  }
+
+  .hero3d.ready canvas {
+    opacity: 1;
+  }
 
   /* --ui-top: the height of the site header laid over the top of the stage, so the panels sit below it */
-  .stage-ui { position: absolute; inset: var(--ui-top, 0px) 0 0 0; pointer-events: none; z-index: 2; }
+  .stage-ui {
+    position: absolute;
+    inset: var(--ui-top, 0px) 0 0 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+
   /* soft fade behind the title so it stays readable over the forest */
   .stage-ui::before {
-    content: ""; position: absolute; inset: auto 0 0 0; height: 26%; pointer-events: none;
-    background: linear-gradient(to top, var(--paper) 10%, color-mix(in srgb, var(--paper) 70%, transparent) 45%, transparent);
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 26%;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      var(--paper) 10%,
+      color-mix(in srgb, var(--paper) 70%, transparent) 45%,
+      transparent
+    );
   }
-  .stage-ui > * { pointer-events: auto; }
+
+  .stage-ui > * {
+    pointer-events: auto;
+  }
 
   .panel {
-    position: absolute; background: color-mix(in srgb, var(--paper) 90%, transparent);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    border: 1.5px solid var(--ink); border-radius: 8px; box-shadow: 3px 3px 0 var(--ink);
-    font: 0.85rem/1.35 var(--sans); color: var(--ink);
+    position: absolute;
+    background: color-mix(in srgb, var(--paper) 90%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--ink);
+    font: 0.85rem/1.35 var(--sans);
+    color: var(--ink);
   }
-  .panel-title { font: 700 0.72rem/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; margin: 0; padding: 0.8rem 1rem 0.6rem; border-bottom: 1px solid var(--rule); }
 
-  .routes-panel { left: 1rem; top: 1rem; width: 15.5rem; max-height: calc(100% - 15rem); overflow: auto; }
-  /* leave room for the details card below the list while one is open (the list scrolls) */
-  .has-detail .routes-panel { max-height: calc(100% - 24rem); }
-  .has-detail.has-image .routes-panel { max-height: calc(100% - 35rem); }
-  .routes-panel ul { list-style: none; margin: 0; padding: 0.35rem; }
-  .routes-panel button {
-    display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left; cursor: pointer;
-    font: 500 0.85rem/1.25 var(--sans); color: var(--ink); background: none; border: 0; border-radius: 5px; padding: 0.45rem 0.6rem;
+  .panel-title {
+    font: 700 0.72rem/1 var(--sans);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0;
+    padding: 0.8rem 1rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
   }
-  .routes-panel button:hover { background: var(--paper-2); }
-  .routes-panel button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-  .routes-panel i, .legend i, .hero3d-label i { flex: none; width: 1.1rem; height: 0; border-top: 3px solid; }
-  .first-ascent i { border-top: 3px solid #b23426; }
-  .major i { border-top: 3px solid #2d6a74; }
+
+  .routes-panel {
+    left: 1rem;
+    top: 1rem;
+    width: 15.5rem;
+    max-height: calc(100% - 15rem);
+    overflow: auto;
+  }
+
+  /* leave room for the details card below the list while one is open (the list scrolls) */
+  .has-detail .routes-panel {
+    max-height: calc(100% - 24rem);
+  }
+
+  .has-detail.has-image .routes-panel {
+    max-height: calc(100% - 35rem);
+  }
+
+  .routes-panel ul {
+    list-style: none;
+    margin: 0;
+    padding: 0.35rem;
+  }
+
+  .routes-panel button {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font: 500 0.85rem/1.25 var(--sans);
+    color: var(--ink);
+    background: none;
+    border: 0;
+    border-radius: 5px;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .routes-panel button:hover {
+    background: var(--paper-2);
+  }
+
+  .routes-panel button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .routes-panel i,
+  .legend i,
+  .hero3d-label i {
+    flex: none;
+    width: 1.1rem;
+    height: 0;
+    border-top: 3px solid;
+  }
+
+  .first-ascent i {
+    border-top: 3px solid #b23426;
+  }
+
+  .major i {
+    border-top: 3px solid #2d6a74;
+  }
+
   /* the key and the credit follow what's on the map */
-  .legend .major, .range-note { display: none; }
-  .stage:not([data-mode="hood"]) .legend > :not(.major, .landmark) { display: none; }
-  .stage:not([data-mode="hood"]) .legend .major { display: flex; }
-  .stage[data-mode="range"] .view-panel { display: none; }
-  .stage[data-mode="range"] .range-note { display: inline; }
+  .legend .major,
+  .range-note {
+    display: none;
+  }
+
+  .stage:not([data-mode="hood"]) .legend > :not(.major, .landmark) {
+    display: none;
+  }
+
+  .stage:not([data-mode="hood"]) .legend .major {
+    display: flex;
+  }
+
+  .stage[data-mode="range"] .view-panel {
+    display: none;
+  }
+
+  .stage[data-mode="range"] .range-note {
+    display: inline;
+  }
+
   /* landmarks: an ink diamond, like the marker on the model */
   /* ski trails: dashed blue; roads: grey */
-  .routes-panel .trail i, .legend .trail i, .hero3d-label.trail i {
-    width: 1.1rem; height: 0; margin: 0; border: 0; border-top: 3px dashed #3f6e8c; background: none; rotate: none;
+  .routes-panel .trail i,
+  .legend .trail i,
+  .hero3d-label.trail i {
+    width: 1.1rem;
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 3px dashed #3f6e8c;
+    background: none;
+    rotate: none;
   }
-  .legend .road i { border-top: 4px solid #8b847b; }
-  .credit a { color: inherit; }
-  .routes-panel .landmark:not(.trail) i, .legend .landmark i, .hero3d-label.landmark:not(.trail) i {
-    width: 0.5rem; height: 0.5rem; margin: 0 0.3rem; border: 1.5px solid var(--ink); background: var(--ink); rotate: 45deg;
+
+  .legend .road i {
+    border-top: 4px solid #8b847b;
   }
-  .routes-panel button.landmark[aria-pressed="true"] i { border-color: var(--paper); background: var(--paper); }
-  .hero3d-label.landmark { border-radius: 5px; }
-  .hero3d-label.landmark.active i { border-color: var(--paper); background: var(--paper); }
-  .routes-panel .list-heading .panel-title { margin: 0.4rem -0.35rem 0.25rem; border-top: 1px solid var(--rule); padding-top: 0.75rem; }
-  .card-sources { margin: -0.2rem 0 0.6rem; font-size: 0.78rem; color: var(--ink-soft); }
+
+  .credit a {
+    color: inherit;
+  }
+
+  .routes-panel .landmark:not(.trail) i,
+  .legend .landmark i,
+  .hero3d-label.landmark:not(.trail) i {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0 0.3rem;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    rotate: 45deg;
+  }
+
+  .routes-panel button.landmark[aria-pressed="true"] i {
+    border-color: var(--paper);
+    background: var(--paper);
+  }
+
+  .hero3d-label.landmark {
+    border-radius: 5px;
+  }
+
+  .hero3d-label.landmark.active i {
+    border-color: var(--paper);
+    background: var(--paper);
+  }
+
+  .routes-panel .list-heading .panel-title {
+    margin: 0.4rem -0.35rem 0.25rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.75rem;
+  }
+
+  .card-sources {
+    margin: -0.2rem 0 0.6rem;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
   /* card photo: full width across the top of the card, credit underneath */
-  .card-image { margin: -0.9rem -1rem 0.75rem; }
-  .card-image img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6.5px 6.5px 0 0; border-bottom: 1.5px solid var(--ink); background: var(--paper-2); }
-  .card-image figcaption { margin: 0; padding: 0.35rem 1rem 0; font: 0.68rem/1.35 var(--sans); color: var(--ink-soft); }
-  .card-image figcaption a { color: inherit; }
-  .detail.has-image .close { z-index: 1; top: 0.5rem; right: 0.5rem; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--paper); border: 1.5px solid var(--ink); color: var(--ink); }
+  .card-image {
+    margin: -0.9rem -1rem 0.75rem;
+  }
+
+  .card-image img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 6.5px 6.5px 0 0;
+    border-bottom: 1.5px solid var(--ink);
+    background: var(--paper-2);
+  }
+
+  .card-image figcaption {
+    margin: 0;
+    padding: 0.35rem 1rem 0;
+    font: 0.68rem/1.35 var(--sans);
+    color: var(--ink-soft);
+  }
+
+  .card-image figcaption a {
+    color: inherit;
+  }
+
+  .detail.has-image .close {
+    z-index: 1;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    color: var(--ink);
+  }
+
   /* places on the regional map */
-  .hero3d-place { position: absolute; left: 0; top: 0; translate: -50% -50%; white-space: nowrap; pointer-events: none; will-change: transform; transition: opacity 0.35s ease; color: var(--ink); font: 600 0.7rem/1 var(--sans); text-shadow: 0 0 4px var(--paper), 0 0 2px var(--paper); }
-  .hero3d-place.hidden { opacity: 0; }
-  .hero3d-place.city { translate: -0.2rem -50%; }
-  .hero3d-place.city::before { content: ""; display: inline-block; width: 0.4rem; height: 0.4rem; margin-right: 0.3rem; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--paper); }
-  .hero3d-place.area { font-weight: 700; font-size: 0.75rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft); }
-  .hero3d-place.sea { font: italic 500 0.8rem/1 var(--serif); color: #2f5564; }
-  .hero3d-place.scale { translate: -50% 0.5rem; }
-  button.hero3d-summit { border: 0; padding: 0; background: none; font: inherit; }
-  .hero3d-summit.selectable { pointer-events: auto; cursor: pointer; }
-  .hero3d-summit.selectable:hover strong, .hero3d-summit.active strong { color: var(--accent); }
-  .hero3d-summit.selectable:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
-  .reopened i { border-top: 3px dashed #c4800a; }
-  .standard i { border-top: 3px dotted #6b6f73; }
+  .hero3d-place {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    white-space: nowrap;
+    pointer-events: none;
+    will-change: transform;
+    transition: opacity 0.35s ease;
+    color: var(--ink);
+    font: 600 0.7rem/1 var(--sans);
+    text-shadow:
+      0 0 4px var(--paper),
+      0 0 2px var(--paper);
+  }
 
-  .detail { left: 1rem; bottom: 4.5rem; width: 19rem; padding: 0.9rem 1rem 1rem; }
-  .detail .kind { margin: 0 0 0.3rem; font: 700 0.68rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
-  .detail h3 { margin: 0 0 0.4rem; font-size: 1.25rem; }
-  .detail .summary { margin: 0 0 0.6rem; }
-  .detail .timeline-link { font-weight: 600; }
-  .detail .close { position: absolute; top: 0.4rem; right: 0.5rem; width: 1.9rem; height: 1.9rem; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; color: var(--ink-soft); }
+  .hero3d-place.hidden {
+    opacity: 0;
+  }
+
+  .hero3d-place.city {
+    translate: -0.2rem -50%;
+  }
+
+  .hero3d-place.city::before {
+    content: "";
+    display: inline-block;
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-right: 0.3rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+  }
+
+  .hero3d-place.area {
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .hero3d-place.sea {
+    font: italic 500 0.8rem/1 var(--serif);
+    color: #2f5564;
+  }
+
+  .hero3d-place.scale {
+    translate: -50% 0.5rem;
+  }
+
+  button.hero3d-summit {
+    border: 0;
+    padding: 0;
+    background: none;
+    font: inherit;
+  }
+
+  .hero3d-summit.selectable {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .hero3d-summit.selectable:hover strong,
+  .hero3d-summit.active strong {
+    color: var(--accent);
+  }
+
+  .hero3d-summit.selectable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  .reopened i {
+    border-top: 3px dashed #c4800a;
+  }
+
+  .standard i {
+    border-top: 3px dotted #6b6f73;
+  }
+
+  .detail {
+    left: 1rem;
+    bottom: 4.5rem;
+    width: 19rem;
+    padding: 0.9rem 1rem 1rem;
+  }
+
+  .detail .kind {
+    margin: 0 0 0.3rem;
+    font: 700 0.68rem/1 var(--sans);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .detail h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1.25rem;
+  }
+
+  .detail .summary {
+    margin: 0 0 0.6rem;
+  }
+
+  .detail .timeline-link {
+    font-weight: 600;
+  }
+
+  .detail .close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.5rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    color: var(--ink-soft);
+  }
+
   /* the × is drawn (not a text character), so it sits dead centre whatever the font */
-  .detail .close svg, .tip-close svg { width: 0.8rem; height: 0.8rem; }
+  .detail .close svg,
+  .tip-close svg {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
 
-  .view-panel { right: 1rem; top: 1rem; width: 12.5rem; padding-bottom: 0.75rem; }
+  .view-panel {
+    right: 1rem;
+    top: 1rem;
+    width: 12.5rem;
+    padding-bottom: 0.75rem;
+  }
+
   /* Esc hides the Routes and Key panels (and brings them back) */
-  .routes-panel, .view-panel { transition: opacity 0.25s, translate 0.25s; }
-  .panels-hidden .routes-panel { opacity: 0; translate: -0.75rem 0; pointer-events: none; visibility: hidden; transition: opacity 0.25s, translate 0.25s, visibility 0s 0.25s; }
-  .panels-hidden .view-panel { opacity: 0; translate: 0.75rem 0; pointer-events: none; visibility: hidden; transition: opacity 0.25s, translate 0.25s, visibility 0s 0.25s; }
-  .esc-note {
-    position: absolute; left: 50%; top: 1rem; translate: -50% -0.5rem; z-index: 3; margin: 0; pointer-events: none;
-    font: 600 0.8rem/1 var(--sans); color: var(--paper); background: var(--ink); padding: 0.55rem 0.9rem; border-radius: 999px;
-    opacity: 0; transition: opacity 0.25s, translate 0.25s;
+  .routes-panel,
+  .view-panel {
+    transition:
+      opacity 0.25s,
+      translate 0.25s;
   }
-  .esc-note.show { opacity: 1; translate: -50% 0; }
-  @media (prefers-reduced-motion: reduce) { .routes-panel, .view-panel, .esc-note { transition: none; } }
-  .legend { display: grid; gap: 0.45rem; margin: 0.7rem 1rem 0; font-size: 0.8rem; color: var(--ink-soft); }
-  .legend span { display: flex; align-items: center; gap: 0.5rem; }
 
-  .compass { position: absolute; right: 1rem; bottom: 7rem; width: 4rem; height: 4rem; display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--ink); }
-  .compass:hover { background: var(--paper-2); }
-  .compass:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
-  .compass svg { width: 92%; height: 92%; }
-  .compass text { font: 700 8px/1 var(--sans); text-anchor: middle; fill: currentColor; }
-  .compass .n { fill: #b23426; }
-  .expand-view { right: 5.75rem; }
-  .reset-view { right: 1rem; }
-  .expand-view .i-in, .stage[data-mode="range"] .expand-view .i-out { display: none; }
-  .stage[data-mode="range"] .expand-view .i-in { display: block; }
-  .expand-view[aria-busy="true"] { opacity: 0.6; cursor: progress; }
-  .reset-view, .expand-view {
-    position: absolute; bottom: 2rem; width: 4rem; height: 4rem;
-    display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--ink);
-    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--ink);
+  .panels-hidden .routes-panel {
+    opacity: 0;
+    translate: -0.75rem 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      opacity 0.25s,
+      translate 0.25s,
+      visibility 0s 0.25s;
   }
-  :is(.reset-view, .expand-view) svg { width: 45%; height: 45%; }
-  :is(.reset-view, .expand-view):hover { background: var(--paper-2); }
-  :is(.reset-view, .expand-view):active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+
+  .panels-hidden .view-panel {
+    opacity: 0;
+    translate: 0.75rem 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      opacity 0.25s,
+      translate 0.25s,
+      visibility 0s 0.25s;
+  }
+
+  .esc-note {
+    position: absolute;
+    left: 50%;
+    top: 1rem;
+    translate: -50% -0.5rem;
+    z-index: 3;
+    margin: 0;
+    pointer-events: none;
+    font: 600 0.8rem/1 var(--sans);
+    color: var(--paper);
+    background: var(--ink);
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    opacity: 0;
+    transition:
+      opacity 0.25s,
+      translate 0.25s;
+  }
+
+  .esc-note.show {
+    opacity: 1;
+    translate: -50% 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .routes-panel,
+    .view-panel,
+    .esc-note {
+      transition: none;
+    }
+  }
+
+  .legend {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0.7rem 1rem 0;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+
+  .legend span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* no hover or tap colour on the round buttons: touch screens leave it on after a tap, as if selected */
+  .reset-view,
+  .expand-view,
+  .compass {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .compass {
+    position: absolute;
+    right: 1rem;
+    bottom: 7rem;
+    width: 4rem;
+    height: 4rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+
+  .compass:active {
+    translate: 1px 1px;
+    box-shadow: 1px 1px 0 var(--ink);
+  }
+
+  .compass svg {
+    width: 92%;
+    height: 92%;
+  }
+
+  .compass text {
+    font: 700 8px/1 var(--sans);
+    text-anchor: middle;
+    fill: currentColor;
+  }
+
+  .compass .n {
+    fill: #b23426;
+  }
+
+  .expand-view {
+    right: 5.75rem;
+  }
+
+  .reset-view {
+    right: 1rem;
+  }
+
+  .expand-view .i-in,
+  .stage[data-mode="range"] .expand-view .i-out {
+    display: none;
+  }
+
+  .stage[data-mode="range"] .expand-view .i-in {
+    display: block;
+  }
+
+  .expand-view[aria-busy="true"] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  .reset-view,
+  .expand-view {
+    position: absolute;
+    bottom: 2rem;
+    width: 4rem;
+    height: 4rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+
+  :is(.reset-view, .expand-view) svg {
+    width: 45%;
+    height: 45%;
+  }
+
+  :is(.reset-view, .expand-view):active {
+    translate: 1px 1px;
+    box-shadow: 1px 1px 0 var(--ink);
+  }
 
   /* title, with the map credits centred under it */
-  .stage-title { position: absolute; left: 50%; bottom: 0.9rem; translate: -50% 0; text-align: center; pointer-events: none; }
-  .stage-title .kicker { margin-bottom: 0.3rem; }
-  .stage-title h1 { margin: 0; font-size: clamp(1.8rem, 3.6vw, 3rem); text-shadow: 0 0 12px var(--paper), 0 0 3px var(--paper); white-space: nowrap; }
-  .credit { margin: 0.55rem 0 0; font: 0.7rem/1.3 var(--sans); color: var(--ink-soft); pointer-events: auto; }
-  .credit .hint { font-weight: 600; color: var(--ink); }
+  .stage-title {
+    position: absolute;
+    left: 50%;
+    bottom: 0.9rem;
+    translate: -50% 0;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .stage-title .kicker {
+    margin-bottom: 0.3rem;
+  }
+
+  .stage-title h1 {
+    margin: 0;
+    font-size: clamp(1.8rem, 3.6vw, 3rem);
+    text-shadow:
+      0 0 12px var(--paper),
+      0 0 3px var(--paper);
+    white-space: nowrap;
+  }
+
+  .credit {
+    margin: 0.55rem 0 0;
+    font: 0.7rem/1.3 var(--sans);
+    color: var(--ink-soft);
+    pointer-events: auto;
+  }
+
+  .credit .hint {
+    font-weight: 600;
+    color: var(--ink);
+  }
 
   /* back to the map */
   .back-to-map {
-    position: fixed; z-index: 20;
-    right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom));
-    display: grid; place-items: center; width: 4rem; height: 4rem;
-    color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%;
+    position: fixed;
+    z-index: 20;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    display: grid;
+    place-items: center;
+    width: 4rem;
+    height: 4rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
     box-shadow: 2px 2px 0 var(--ink);
-    opacity: 0; translate: 0 0.75rem; pointer-events: none; transition: opacity 0.25s, translate 0.25s;
+    opacity: 0;
+    translate: 0 0.75rem;
+    pointer-events: none;
+    transition:
+      opacity 0.25s,
+      translate 0.25s;
   }
-  .back-to-map.show { opacity: 1; translate: 0 0; pointer-events: auto; }
-  .back-to-map:hover { background: var(--paper-2); }
-  .back-to-map:active { box-shadow: 1px 1px 0 var(--ink); }
-  .back-to-map svg { transition: translate 0.2s; }
-  .back-to-map:hover svg { translate: 0 -2px; }
-  @media (prefers-reduced-motion: reduce) { .back-to-map { transition: none; } }
-  @media print { .back-to-map { display: none; } }
+
+  .back-to-map.show {
+    opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
+  }
+
+  .back-to-map:hover {
+    background: var(--paper-2);
+  }
+
+  .back-to-map:active {
+    box-shadow: 1px 1px 0 var(--ink);
+  }
+
+  .back-to-map svg {
+    transition: translate 0.2s;
+  }
+
+  .back-to-map:hover svg {
+    translate: 0 -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .back-to-map {
+      transition: none;
+    }
+  }
+
+  @media print {
+    .back-to-map {
+      display: none;
+    }
+  }
 
   /* tip: bottom left, beside the title on wide screens */
   .tip {
-    position: absolute; left: 1rem; bottom: 2rem; z-index: 3;
-    display: flex; align-items: center; gap: 0.6rem; max-width: min(26rem, calc(50% - 19rem));
-    padding: 0.5rem 0.5rem 0.5rem 0.6rem; font: 0.82rem/1.35 var(--sans); color: var(--ink);
-    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 999px; box-shadow: 2px 2px 0 var(--ink);
+    position: absolute;
+    left: 1rem;
+    bottom: 2rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: min(26rem, calc(50% - 19rem));
+    padding: 0.5rem 0.5rem 0.5rem 0.6rem;
+    font: 0.82rem/1.35 var(--sans);
+    color: var(--ink);
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 var(--ink);
     /* 'backwards' (not 'both') so the animation lets go once it ends and .gone can fade it out */
-    animation: tip-in 0.5s ease backwards; transition: opacity 0.35s, translate 0.35s;
+    animation: tip-in 0.5s ease backwards;
+    transition:
+      opacity 0.35s,
+      translate 0.35s;
   }
-  .tip.gone { opacity: 0; translate: 0 0.5rem; pointer-events: none; }
+
+  .tip.gone {
+    opacity: 0;
+    translate: 0 0.5rem;
+    pointer-events: none;
+  }
+
   /* mid-width screens: not enough room beside the title, so sit just above its level */
-  @media (min-width: 761px) and (max-width: 1199px) { .tip { bottom: 7.5rem; max-width: 24rem; } }
-  .tip[hidden] { display: none; } /* .tip's display: flex would otherwise override [hidden] */
-  .tip-badge { flex: none; font: 700 0.66rem/1 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper); background: var(--ink); padding: 0.35em 0.6em; border-radius: 999px; }
-  .tip-close { flex: none; width: 2rem; height: 2rem; margin: -0.2rem -0.1rem -0.2rem 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-soft); cursor: pointer; }
-  .tip-close:hover { background: var(--paper-2); color: var(--ink); }
-  @keyframes tip-in { from { opacity: 0; translate: 0 0.5rem; } }
-  @media (prefers-reduced-motion: reduce) { .tip { animation: none; transition: none; } }
+  @media (min-width: 761px) and (max-width: 1199px) {
+    .tip {
+      bottom: 7.5rem;
+      max-width: 24rem;
+    }
+  }
+
+  .tip[hidden] {
+    display: none;
+  } /* .tip's display: flex would otherwise override [hidden] */
+  .tip-badge {
+    flex: none;
+    font: 700 0.66rem/1 var(--sans);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: var(--ink);
+    padding: 0.35em 0.6em;
+    border-radius: 999px;
+  }
+
+  .tip-close {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    margin: -0.2rem -0.1rem -0.2rem 0;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .tip-close:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+
+  @keyframes tip-in {
+    from {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tip {
+      animation: none;
+      transition: none;
+    }
+  }
 
   /* labels drawn over the model */
-  .hero3d-labels { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-  .hero3d-labels.off .hero3d-label:not(.active) { display: none; }
-  .hero3d-label, .hero3d-summit { position: absolute; left: 0; top: 0; will-change: transform; transition: opacity 0.35s ease; }
-  .hero3d-label.hidden, .hero3d-summit.hidden { opacity: 0; pointer-events: none !important; }
+  .hero3d-labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .hero3d-labels.off .hero3d-label:not(.active) {
+    display: none;
+  }
+
+  .hero3d-label,
+  .hero3d-summit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+    transition: opacity 0.35s ease;
+  }
+
+  .hero3d-label.hidden,
+  .hero3d-summit.hidden {
+    opacity: 0;
+    pointer-events: none !important;
+  }
+
   .hero3d-label {
-    pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4em;
+    pointer-events: auto;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
     /* centred just above its point on the model */
     translate: -50% calc(-100% - 0.45rem);
-    font: 600 0.74rem/1 var(--sans); white-space: nowrap; color: var(--ink);
-    background: color-mix(in srgb, var(--paper) 92%, transparent); border: 1.5px solid var(--ink);
-    padding: 0.4em 0.75em 0.4em 0.55em; border-radius: 999px; box-shadow: 2px 2px 0 var(--ink);
+    font: 600 0.74rem/1 var(--sans);
+    white-space: nowrap;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    border: 1.5px solid var(--ink);
+    padding: 0.4em 0.75em 0.4em 0.55em;
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 var(--ink);
   }
-  .hero3d-label i { width: 0.9rem; }
-  .hero3d-label.active { background: var(--ink); color: var(--paper); }
-  .hero3d-summit { margin: -3.2rem 0 0 0; translate: -50% 0; text-align: center; color: var(--ink); text-shadow: 0 0 6px var(--paper), 0 0 2px var(--paper); pointer-events: none; }
-  .hero3d-summit strong { display: block; font: 600 1.15rem/1.1 var(--display); }
-  .hero3d-summit span { font: 600 0.72rem/1 var(--sans); letter-spacing: 0.08em; }
+
+  .hero3d-label i {
+    width: 0.9rem;
+  }
+
+  .hero3d-label.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .hero3d-summit {
+    margin: -3.2rem 0 0 0;
+    translate: -50% 0;
+    text-align: center;
+    color: var(--ink);
+    text-shadow:
+      0 0 6px var(--paper),
+      0 0 2px var(--paper);
+    pointer-events: none;
+  }
+
+  .hero3d-summit strong {
+    display: block;
+    font: 600 1.15rem/1.1 var(--display);
+  }
+
+  .hero3d-summit span {
+    font: 600 0.72rem/1 var(--sans);
+    letter-spacing: 0.08em;
+  }
 
   /* ---------- narrow screens: chips along the top, details as a bottom sheet ---------- */
   @media (max-width: 760px) {
-    .stage { min-height: 520px; }
-    .view-panel { display: none; }
+    .stage {
+      min-height: 520px;
+    }
+
+    .view-panel {
+      display: none;
+    }
+
     /* phones use the labels on the model itself (as on desktop) instead of a list */
-    .routes-panel { display: none; }
-    .hero3d-label { font-size: 0.68rem; padding: 0.35em 0.65em 0.35em 0.5em; box-shadow: 1.5px 1.5px 0 var(--ink); }
-    .hero3d-summit strong { font-size: 1rem; }
+    .routes-panel {
+      display: none;
+    }
+
+    .hero3d-label {
+      font-size: 0.68rem;
+      padding: 0.35em 0.65em 0.35em 0.5em;
+      box-shadow: 1.5px 1.5px 0 var(--ink);
+    }
+
+    .hero3d-summit strong {
+      font-size: 1rem;
+    }
+
     /* all the mountains at once: names only, smaller */
-    .stage[data-mode="range"] .hero3d-summit { margin-top: -1.2rem; }
-    .stage[data-mode="range"] .hero3d-summit strong { font-size: 0.82rem; }
-    .stage[data-mode="range"] .hero3d-summit span { display: none; }
-    .detail { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: auto; z-index: 3; }
-    .card-image img { aspect-ratio: 2 / 1; } /* shorter photo so the bottom card leaves the map visible */
+    .stage[data-mode="range"] .hero3d-summit {
+      margin-top: -1.2rem;
+    }
+
+    .stage[data-mode="range"] .hero3d-summit strong {
+      font-size: 0.82rem;
+    }
+
+    .stage[data-mode="range"] .hero3d-summit span {
+      display: none;
+    }
+
+    .detail {
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      width: auto;
+      z-index: 3;
+    }
+
+    .card-image img {
+      aspect-ratio: 2 / 1;
+    } /* shorter photo so the bottom card leaves the map visible */
     /* bottom of the stage, from the bottom up: credits, title, then the tip and reset button side by side */
-    .stage-title { bottom: 0.6rem; width: calc(100% - 1.5rem); }
-    .stage-title .kicker { display: none; }
-    .credit { margin-top: 0.4rem; font-size: 0.65rem; }
-    .reset-view, .expand-view { bottom: 5rem; width: 3.25rem; height: 3.25rem; }
-    .reset-view { right: 0.75rem; }
-    .expand-view { right: 4.5rem; }
-    .compass { right: 0.75rem; bottom: 9rem; width: 3.25rem; height: 3.25rem; }
-    .tip { bottom: 5rem; left: 0.75rem; right: 8.5rem; min-height: 3.25rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
-    .has-detail .stage-title, .has-detail .reset-view, .has-detail .expand-view, .has-detail .compass { visibility: hidden; }
+    .stage-title {
+      bottom: 0.6rem;
+      width: calc(100% - 1.5rem);
+    }
+
+    .stage-title .kicker {
+      display: none;
+    }
+
+    .credit {
+      margin-top: 0.4rem;
+      font-size: 0.65rem;
+    }
+
+    .reset-view,
+    .expand-view {
+      bottom: 5rem;
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+
+    .reset-view {
+      right: 0.75rem;
+    }
+
+    .expand-view {
+      right: 4.5rem;
+    }
+
+    .compass {
+      right: 0.75rem;
+      bottom: 9rem;
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+
+    .tip {
+      bottom: 5rem;
+      left: 0.75rem;
+      right: 8.5rem;
+      min-height: 3.25rem;
+      max-width: none;
+      border-radius: 12px;
+      font-size: 0.78rem;
+    }
+
+    .has-detail .stage-title,
+    .has-detail .reset-view,
+    .has-detail .expand-view,
+    .has-detail .compass {
+      visibility: hidden;
+    }
   }
+
   /* On touch screens the model takes every swipe, so the title band is where a swipe scrolls the page.
-     It stretches across the stage and down to its bottom edge to make an easy target. */
+       It stretches across the stage and down to its bottom edge to make an easy target. */
   @media (pointer: coarse) {
-    .stage-title { pointer-events: auto; touch-action: pan-y; left: 0; right: 0; bottom: 0; width: auto; translate: none; padding: 0.4rem 0.75rem 0.6rem; }
+    .stage-title {
+      pointer-events: auto;
+      touch-action: pan-y;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: auto;
+      translate: none;
+      padding: 0.4rem 0.75rem 0.6rem;
+    }
   }
 </style>
