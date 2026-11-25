@@ -766,12 +766,13 @@ export async function mountHero(
   controls.rotateSpeed = 0.6;
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   controls.autoRotate = !reduceMotion;
-  controls.autoRotateSpeed = -0.35;
+  const TURN_SPEED = -0.35;
+  controls.autoRotateSpeed = TURN_SPEED;
   // Every touch on the model turns, tilts or zooms it; the page scrolls from the title band along the
   // bottom of the stage (see .stage-title in Hero.astro) and the header.
   canvas.style.touchAction = "none";
   let wantRotate = !reduceMotion;
-  const canTurn = () => wantRotate && !selected && mode !== "range";
+  const canTurn = () => wantRotate && !selected;
   let resumeTimer = 0;
   controls.addEventListener("start", () => {
     if (levelOff) return; // between mountains: lifting one finger of a pinch also "starts" a drag
@@ -1398,6 +1399,17 @@ export async function mountHero(
     return moving;
   }
 
+  // Everything turns steadily all the way round, except the whole range on a tall screen: side-on it
+  // is wider than the screen, so there it sways either side of the opening view.
+  const SWAY = THREE.MathUtils.degToRad(10);
+  function steerTurn() {
+    if (mode !== "range" || camera.aspect >= 0.95) { controls.autoRotateSpeed = TURN_SPEED; return; }
+    const off = controls.getAzimuthalAngle() - rangeSph().theta;
+    const turn = Math.atan2(Math.sin(off), Math.cos(off));
+    if (turn > SWAY) controls.autoRotateSpeed = Math.abs(TURN_SPEED); // positive turns back toward smaller angles
+    else if (turn < -SWAY) controls.autoRotateSpeed = -Math.abs(TURN_SPEED);
+  }
+
   let visible = true;
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(container);
   renderer.setAnimationLoop(() => {
@@ -1406,6 +1418,7 @@ export async function mountHero(
     if (stepRange()) render();
     if (offsetMoving) { stepOffset(); render(); }
     if (puffs.length) { stepSmoke(performance.now() / 1000); render(); }
+    steerTurn();
     controls.update();
   });
 

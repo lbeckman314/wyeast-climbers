@@ -539,6 +539,9 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
     padding: 0.5rem 0 0.75rem;
     scrollbar-width: thin;
     outline: none;
+    /* events fade out at the left edge; --fade grows from 0 as the track scrolls (see the script) */
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade, 0px));
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade, 0px));
   }
 
   .tl-group {
@@ -554,7 +557,7 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
     color: var(--ink);
     padding: 0 0 0.6rem 0.25rem;
     position: sticky;
-    left: 0;
+    left: var(--fade, 0px); /* clear of the fade */
   }
 
   .tl-stops {
@@ -1367,6 +1370,11 @@ const byStatus = (s: string) => permissions.filter((p) => p.data.status === s).l
   let userScroll = false, scrollQueued = false, settleTimer = 0;
   for (const ev of ["wheel", "pointerdown", "touchstart"]) track.addEventListener(ev, () => (userScroll = true), { passive: true });
   document.querySelectorAll(".tl-scroll").forEach((b) => b.addEventListener("click", () => (userScroll = true)));
+  // Left-edge fade: none at the very start, so the first event stays crisp.
+  const FADE = 56; // px
+  const fadeEdge = () => track.style.setProperty("--fade", `${Math.round(Math.min(Math.max(track.scrollLeft, 0), FADE))}px`);
+  track.addEventListener("scroll", fadeEdge, { passive: true });
+  fadeEdge();
   track.addEventListener("scroll", () => {
     if (!userScroll || autoScroll || scrollQueued) return;
     scrollQueued = true;
