@@ -18,10 +18,13 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import terrain from "../data/hero-terrain.json";
 import { routes as routeInfo } from "../data/routes";
 import landmarkData from "../data/landmarks.json";
+import rangeData from "../data/range.json";
 import features from "../data/hero-features.json";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { landmarkIcons, type LandmarkShape } from "../data/landmarkShapes";
 import { buildLandmark } from "./landmark-models";
+import type { Peak } from "./range3d";
+import type { Region } from "./region3d";
 
 const EXAG = 1.8; // vertical exaggeration
 const RINGS = 150;        // rings across the detailed mountain
@@ -34,21 +37,32 @@ const START_POLAR = 66; // degrees down from straight overhead (90 = level with 
 // top/bottom edge of the stage, and at least START_WIDTH to each side (which is what sets it on phones).
 const START_HEIGHT = 1.15;
 const START_WIDTH = 0.7;
+// where the camera opens on each of the other mountains (degrees clockwise from north)
+const PEAK_BEARING: Record<string, number> = { rainier: 140, "st-helens": 160, adams: 190, jefferson: 200, sisters: 110 };
+const RANGE_PANEL = 270; // px the list of mountains covers on wide screens
 const START_FOCUS = 0.42; // how far the view's centre sits from the mountain's core toward Government Camp
 
 const PALETTE = {
   ink: "#1e2226", snow: "#f8f3e7", rock: "#c4b9a3", forest: "#7d977f", tree: "#45604f",
-  first: "#b23426", reopened: "#c4800a", standard: "#4b4f53", inkAmt: 0.6,
+  first: "#b23426", reopened: "#c4800a", standard: "#4b4f53", major: "#2d6a74", inkAmt: 0.6,
   // landmark buildings
   stone: "#ece4d3", timber: "#c9a983", roof: "#6b5a51",
   // Government Camp: roads, ski trails, cars, snowbanks
+  // the regional map
+  sea: "#bcd0d6", grass: "#d3d5b9", dry: "#e4d8b8",
   road: "#8b847b", trail: "#3f6e8c", car: "#3b3330", smoke: "#f4efe6",
 };
+
+const rangeNames = new Map(rangeData.flatMap((p) => p.routes.map((r) => [r.id, r.name] as const)));
 
 // ---------------------------------------------------------------- shader
 const vertex = /* glsl */ `
   attribute float aElev;
   attribute float aForest;
+  uniform vec2 uCenter;
+  uniform float uFade0, uFade1;
+  uniform float uSink;   // 1: the mountain's edges settle down onto the map at uGround
+  uniform float uGround;
   varying vec3 vN;
   varying vec3 vW;
   varying float vElev;
@@ -59,6 +73,7 @@ const vertex = /* glsl */ `
       m = modelMatrix * instanceMatrix;
     #endif
     vec4 w = m * vec4(position, 1.0);
+    w.y = mix(w.y, uGround, smoothstep(uFade0 * 0.6, uFade1 * 0.95, length(w.xz - uCenter)) * uSink);
     vW = w.xyz;
     vN = normalize(mat3(m) * normal);
     vElev = aElev;
@@ -81,6 +96,8 @@ const fragment = /* glsl */ `
   uniform float uLines;    // contour line strength (0 = off)
   uniform float uFade0;    // km from the summit where the surroundings start to fade...
   uniform float uFade1;    // ...and where they are gone
+  uniform vec2 uCenter;    // the mountain's summit (x, z)
+  uniform float uOpacity;
   varying vec3 vN;
   varying vec3 vW;
   varying float vElev;
@@ -100,8 +117,8 @@ const fragment = /* glsl */ `
   }
 
   void main() {
-    float dist = length(vW.xz);
-    float fade = 1.0 - smoothstep(uFade0, uFade1, dist);
+    float dist = length(vW.xz - uCenter);
+    float fade = (1.0 - smoothstep(uFade0, uFade1, dist)) * uOpacity;
     if (fade <= 0.002) discard;
 
     vec3 n = normalize(vN);
@@ -157,6 +174,10 @@ function material(mode: number) {
       uLines: { value: 1 },
       uFade0: { value: 9 },
       uFade1: { value: 18 },
+      uCenter: { value: new THREE.Vector2() },
+      uOpacity: { value: 1 },
+      uSink: { value: 0 },
+      uGround: { value: 0 },
     },
   });
 }
@@ -194,6 +215,10 @@ export interface HeroController {
   select(id: string | null): void;
   zoomBy(factor: number): void;
   reset(): void;
+  /** Turn to look north, keeping the zoom. */
+  faceNorth(): void;
+  /** Open one mountain ("hood" or an id from src/data/range.json), or "range" for all of them. */
+  open(mode: string): Promise<void>;
   setAutoRotate(on: boolean): void;
   setLabels(on: boolean): void;
   setTrees(on: boolean): void;
@@ -211,6 +236,10 @@ export async function mountHero(
     /** starting insets (see HeroController.setInsets) */
     insets?: Partial<Insets>;
     onInteract?: () => void;
+    /** the compass direction the camera looks (degrees clockwise from north), sent as it turns */
+    onHeading?: (deg: number) => void;
+    /** which mountain is open ("hood", a range.json id) or "range" (sent when it changes) */
+    onMode?: (mode: string) => void;
     /** ids of the routes and landmarks on the side of the mountain facing the camera (sent when it changes) */
     onFacing?: (ids: string[]) => void;
   } = {},
@@ -241,6 +270,8 @@ export async function mountHero(
   const baseElev = terrain.minElev - 350;
   const toY = (m: number) => ((m - baseElev) / 1000) * EXAG;
   const scene = new THREE.Scene();
+  const hood = new THREE.Group(); // Mount Hood and everything on it
+  scene.add(hood);
   const mats = {
     terrain: material(0), tree: material(2), stone: material(2), timber: material(2), roof: material(2),
     road: material(2), trail: material(2), car: material(2), snowbank: material(2),
@@ -277,7 +308,7 @@ export async function mountHero(
     g.setAttribute("aForest", new THREE.Float32BufferAttribute(fo, 1));
     g.setIndex(idx);
     g.computeVertexNormals();
-    scene.add(new THREE.Mesh(g, mats.terrain));
+    hood.add(new THREE.Mesh(g, mats.terrain));
   }
 
   // trees: little firs scattered by the forest map
@@ -315,7 +346,7 @@ export async function mountHero(
     }
     trees = new THREE.InstancedMesh(cone, mats.tree, mats4.length);
     mats4.forEach((mm, i) => trees.setMatrixAt(i, mm));
-    scene.add(trees);
+    hood.add(trees);
   }
 
   // routes: raised lines with an ink casing, one material pair per route so a route can be highlighted
@@ -323,7 +354,7 @@ export async function mountHero(
   const routeObjs = new Map<string, RouteObj>();
   // bearing: which side of the mountain the label is on (NaN = always shown); used to hide labels facing away
   // minor: village-scale labels, shown only once the camera is close
-  const anchors: { id: string; el: HTMLElement; pos: THREE.Vector3; bearing: number; landmark?: boolean; minor?: boolean }[] = [];
+  const anchors: { id: string; el: HTMLElement; pos: THREE.Vector3; bearing: number; landmark?: boolean; minor?: boolean; peak?: Peak }[] = [];
   const labels = document.createElement("div");
   labels.className = "hero3d-labels";
   for (const r of terrain.routes) {
@@ -347,7 +378,7 @@ export async function mountHero(
       const ink = new THREE.Mesh(new THREE.TubeGeometry(seg, segs, 0.052, 6), obj.ink);
       line.userData.route = ink.userData.route = r.id;
       obj.meshes.push(line, ink);
-      scene.add(line, ink);
+      hood.add(line, ink);
     }
     routeObjs.set(r.id, obj);
     const el = document.createElement("button");
@@ -401,7 +432,7 @@ export async function mountHero(
       landmarkMeshes.push(mesh);
       group.add(hull, mesh);
     }
-    scene.add(group);
+    hood.add(group);
     return group;
   };
   const ground = (x: number, z: number) => toY(elev(x, z));
@@ -578,8 +609,8 @@ export async function mountHero(
     roadGeos.push(ribbon(r.pts, w, 0.012));
     if (r.kind === "loop") for (const side of [1, -1]) bankGeos.push(ribbon(r.pts, 0.014, 0.016, side * (w / 2 + 0.009)));
   }
-  if (roadGeos.length) scene.add(new THREE.Mesh(mergeGeometries(roadGeos), mats.road));
-  if (bankGeos.length) scene.add(new THREE.Mesh(mergeGeometries(bankGeos), mats.snowbank));
+  if (roadGeos.length) hood.add(new THREE.Mesh(mergeGeometries(roadGeos), mats.road));
+  if (bankGeos.length) hood.add(new THREE.Mesh(mergeGeometries(bankGeos), mats.snowbank));
 
   // ski trails: dashed blue, clickable
   for (const [id, segs] of Object.entries(featureTrails)) {
@@ -589,7 +620,7 @@ export async function mountHero(
     const mesh = new THREE.Mesh(mergeGeometries(geos), mats.trail);
     mesh.userData.route = id;
     landmarkMeshes.push(mesh);
-    scene.add(mesh);
+    hood.add(mesh);
   }
 
   // village buildings from footprints (drawn ~2.2x like the rest), skipping the landmark sites
@@ -618,7 +649,7 @@ export async function mountHero(
     const vRoofs = new THREE.Mesh(mergeGeometries(roofGeos.map((g) => (g.index ? g.toNonIndexed() : g))), mats.roof);
     const vHull = new THREE.Mesh(mergeGeometries(hullGeos.map((g) => g.toNonIndexed())), hullMat);
     for (const m of [vWalls, vRoofs]) { m.userData.route = "government-camp"; landmarkMeshes.push(m); }
-    scene.add(vHull, vWalls, vRoofs);
+    hood.add(vHull, vWalls, vRoofs);
   }
 
   // parked cars along both sides of the loop road, as in photos of busy 1930s ski weekends
@@ -645,7 +676,7 @@ export async function mountHero(
     if (spots.length) {
       const cars = new THREE.InstancedMesh(carGeo, mats.car, spots.length);
       spots.forEach((m, k) => cars.setMatrixAt(k, m));
-      scene.add(cars);
+      hood.add(cars);
     }
   }
 
@@ -662,7 +693,7 @@ export async function mountHero(
       for (let k = 0; k < 3; k++) {
         const mat = smokeMat.clone();
         const mesh = new THREE.Mesh(puffGeo, mat);
-        scene.add(mesh);
+        hood.add(mesh);
         puffs.push({ mesh, base, phase: k / 3 + Math.random() * 0.1, mat });
       }
     }
@@ -687,7 +718,7 @@ export async function mountHero(
     summitEl.classList.add("selectable");
     summitEl.setAttribute("role", "button");
     summitEl.tabIndex = 0;
-    const pick = () => controller.select(selected === "summit" ? null : "summit");
+    const pick = () => (mode === "range" ? controller.open("hood") : controller.select(selected === "summit" ? null : "summit"));
     summitEl.addEventListener("click", pick);
     summitEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
   }
@@ -740,10 +771,11 @@ export async function mountHero(
   // bottom of the stage (see .stage-title in Hero.astro) and the header.
   canvas.style.touchAction = "none";
   let wantRotate = !reduceMotion;
+  const canTurn = () => wantRotate && !selected && mode !== "range";
   let resumeTimer = 0;
-  controls.addEventListener("start", () => { controls.autoRotate = false; tween = null; clearTimeout(resumeTimer); opts.onInteract?.(); });
+  controls.addEventListener("start", () => { controls.autoRotate = false; tween = null; levelOff = null; clearTimeout(resumeTimer); opts.onInteract?.(); });
   controls.addEventListener("end", () => {
-    if (wantRotate && !selected) resumeTimer = window.setTimeout(() => (controls.autoRotate = wantRotate && !selected), 6000);
+    if (canTurn()) resumeTimer = window.setTimeout(() => (controls.autoRotate = canTurn()), 6000);
   });
 
   // The wheel zooms only while the whole stage is on screen. Zooming out past the full
@@ -753,6 +785,94 @@ export async function mountHero(
     const atMax = camera.position.distanceTo(controls.target) >= controls.maxDistance * 0.995;
     if (top < -4 || (e.deltaY > 0 && atMax)) e.stopPropagation();
   }, { capture: true, passive: true });
+
+  // ---------------------------------------------------------------- the surrounding mountains
+  let mode = "hood"; // "hood", "range" (all of them) or the id of another mountain
+  let peaks: Peak[] = [];
+  let region: Region | null = null;
+  const placeEls: { el: HTMLElement; pos: THREE.Vector3 }[] = [];
+  let rangeLoading: Promise<void> | null = null;
+  const here = () => peaks.find((p) => p.id === mode);
+  const peakLabels = new Map<string, HTMLElement>();
+  const pickable = () => here()?.pickable ?? [...[...routeObjs.values()].flatMap((o) => o.meshes), ...landmarkMeshes];
+  const hoodFades = Object.values(mats);
+  const hoodTerrainFade = hoodFades.map((m) => m.uniforms.uFade1.value as number);
+
+  const loadRange = () => (rangeLoading ??= (async () => {
+    const [{ buildRange }, { buildRegion }] = await Promise.all([import("./range3d"), import("./region3d")]);
+    const skin = (m: THREE.ShaderMaterial, base: string) => {
+      const u = m.uniforms, p = PALETTE;
+      u.uInk.value.set(p.ink); u.uBase.value.set(base); u.uSnow.value.set(p.snow); u.uRock.value.set(p.rock);
+      u.uForest.value.set(p.forest); u.uInkAmt.value = p.inkAmt; u.uDot.value = 4.4 * dpr; u.uOpacity.value = 0;
+      return m;
+    };
+    const marker = skin(material(2), PALETTE.snow);
+    marker.uniforms.uOpacity.value = 1;
+    marker.uniforms.uFade0.value = 9e3; marker.uniforms.uFade1.value = 1e4;
+    const built = await buildRange({
+      toY, loadHeights, rand: mulberry32, hullMaterial: hullMat, markerMaterial: marker,
+      lineColor: PALETTE.major, inkColor: PALETTE.ink,
+      terrainMaterial: () => skin(material(0), PALETTE.snow),
+      treeMaterial: () => skin(material(2), PALETTE.tree),
+    });
+    region = await buildRegion(
+      [{ x: 0, z: 0, r: R * 1.2 }, ...built.map((p) => ({ x: p.center.x, z: p.center.z, r: p.radius * 0.8 }))],
+      { ink: PALETTE.ink, grass: PALETTE.grass, dry: PALETTE.dry, forest: PALETTE.forest, snow: PALETTE.snow, sea: PALETTE.sea, dot: 4.4 * dpr, light: mats.terrain.uniforms.uLightView.value },
+    );
+    region.mesh.visible = region.bar.visible = false;
+    scene.add(region.mesh, region.bar);
+    for (const m of hoodFades) m.uniforms.uGround.value = region.groundAt(0, 0);
+    for (const p of built) for (const m of p.mats) m.uniforms.uGround.value = region.groundAt(p.center.x, p.center.z);
+    for (const p of region.places) {
+      const el = document.createElement("div");
+      el.className = `hero3d-place ${p.kind} hidden`;
+      el.textContent = p.name;
+      labels.prepend(el); // under the mountains' names
+      placeEls.push({ el, pos: p.pos });
+    }
+    peaks = built;
+    for (const p of peaks) {
+      p.group.visible = p.extras.visible = false;
+      scene.add(p.group);
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "hero3d-summit selectable hidden";
+      el.innerHTML = `<strong>${p.name}</strong><span>${p.ft.toLocaleString("en-US")} ft</span>`;
+      el.addEventListener("click", () => (mode === "range" ? void controller.open(p.id) : controller.select(selected === p.id ? null : p.id)));
+      labels.append(el);
+      peakLabels.set(p.id, el);
+      landmarkPos.set(p.id, p.top.clone());
+      const label = (id: string, name: string, cls: string, pos: THREE.Vector3, bearing: number, landmark: boolean) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = `hero3d-label ${cls} hidden`;
+        b.innerHTML = `<i></i>${name}`;
+        b.addEventListener("click", () => controller.select(selected === id ? null : id));
+        labels.append(b);
+        anchors.push({ id, el: b, pos: pos.clone().add(new THREE.Vector3(0, 0.1, 0)), bearing, landmark, peak: p });
+      };
+      for (const r of p.routes) {
+        routeObjs.set(r.id, { id: r.id, kind: "major", line: r.line, ink: r.ink, meshes: r.meshes, focus: r.focus });
+        label(r.id, rangeNames.get(r.id) ?? r.id, "major", r.label, r.bearing, false);
+      }
+      for (const m of p.marks) {
+        landmarkPos.set(m.id, m.pos);
+        label(m.id, m.name, "landmark", m.pos, m.bearing, true);
+      }
+    }
+    measure();
+  })().catch((e) => { rangeLoading = null; throw e; }));
+  // in the all-mountains view: the mountain under the pointer (nearest centre within reach)
+  const peakAt = () => {
+    const at = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -toY(1600)), new THREE.Vector3());
+    if (!at) return null;
+    let best: string | null = null, bd = 1;
+    for (const c of [{ id: "hood", center: new THREE.Vector3(), radius: R }, ...peaks]) {
+      const dd = Math.hypot(at.x - c.center.x, at.z - c.center.z) / (c.radius * 0.8);
+      if (dd < bd) { bd = dd; best = c.id; }
+    }
+    return best;
+  };
 
   // Click (not drag) on a route line selects it.
   const ray = new THREE.Raycaster();
@@ -764,8 +884,8 @@ export async function mountHero(
     if (!start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-    const meshes = [...[...routeObjs.values()].flatMap((o) => o.meshes), ...landmarkMeshes];
-    const hit = ray.intersectObjects(meshes, false)[0];
+    const hit = mode === "range" ? undefined : ray.intersectObjects(pickable(), false)[0];
+    if (mode === "range") { const at = peakAt(); if (at) void controller.open(at); return; }
     // a click on a route selects it; a click on the map anywhere else closes the selection
     if (hit) controller.select(hit.object.userData.route);
     else if (selected) controller.select(null);
@@ -779,16 +899,73 @@ export async function mountHero(
       hoverQueued = false;
       const r = canvas.getBoundingClientRect();
       ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-      const hit = ray.intersectObjects([...[...routeObjs.values()].flatMap((o) => o.meshes), ...landmarkMeshes], false)[0];
+      const hit = mode === "range" ? peakAt() : ray.intersectObjects(pickable(), false)[0];
       canvas.style.cursor = hit ? "pointer" : "";
     });
   });
   controls.addEventListener("change", () => render());
 
+  const ORIGIN = new THREE.Vector3();
   const peak = toY(terrain.summitElev);
   const home = new THREE.Vector3(0, peak * 0.36, 0);
   const HOME_POLAR = THREE.MathUtils.degToRad(62);
-  let fitDist = 0;
+  let fitDist = 0; // the distance that fits the open mountain
+  let hoodFit = 0, rangeDist = 0;
+  const peakFit = new Map<string, number>();
+  const center = () => here()?.center ?? ORIGIN;
+  const middle = () => {
+    const p = here();
+    return p ? new THREE.Vector3(p.center.x, p.top.y * 0.42, p.center.z) : home.clone();
+  };
+  // the all-mountains view: from the west-southwest on wide screens, so the range runs across them;
+  // from the south on tall ones, so it runs up them
+  const rangeTarget = () => {
+    const xs = [0, ...peaks.map((p) => p.center.x)], zs = [0, ...peaks.map((p) => p.center.z)];
+    return new THREE.Vector3((Math.min(...xs) + Math.max(...xs)) / 2, 5, (Math.min(...zs) + Math.max(...zs)) / 2);
+  };
+  const rangeSph = () => {
+    const tall = camera.aspect < 0.95;
+    return new THREE.Spherical(rangeDist, THREE.MathUtils.degToRad(tall ? 52 : 66), bearingToTheta(tall ? 190 : 255));
+  };
+  const openView = () =>
+    mode === "range" ? { target: rangeTarget(), sph: rangeSph() }
+    : mode === "hood" ? { target: startTarget(), sph: startView() }
+    : { target: middle(), sph: new THREE.Spherical(fitDist, THREE.MathUtils.degToRad(64), bearingToTheta(PEAK_BEARING[mode] ?? 215)) };
+  // fit each mountain, and the whole range, to the stage
+  const measure = () => {
+    const h = container.clientHeight, f = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    const tv = f * Math.max(0.4, (h - insets.top) / h), th = f * camera.aspect;
+    for (const p of peaks) {
+      const r = p.radius * 0.72;
+      const halfV = ((r * 2 * Math.cos(HOME_POLAR) + p.top.y * Math.sin(HOME_POLAR)) / 2) * 1.12;
+      peakFit.set(p.id, Math.max(halfV / tv, r / th));
+    }
+    if (peaks.length) {
+      const cam = new THREE.PerspectiveCamera(camera.fov, camera.aspect, 0.3, 600);
+      const t = rangeTarget(), q = new THREE.Vector3();
+      const limX = camera.aspect < 0.95 ? 0.92 : Math.max(0.6, 1 - (RANGE_PANEL + 60) / container.clientWidth);
+      const pts = [{ center: ORIGIN, radius: R, top: summitPos }, ...peaks].flatMap((p) => [
+        p.top.clone().setY(p.top.y * WIDE_RELIEF), ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => new THREE.Vector3(p.center.x + Math.cos(k * 0.785) * p.radius * 0.7, toY(1200) * WIDE_RELIEF, p.center.z + Math.sin(k * 0.785) * p.radius * 0.7)),
+      ]);
+      for (rangeDist = 40; rangeDist < 420; rangeDist *= 1.04) {
+        cam.position.setFromSpherical(rangeSph()).add(t);
+        cam.lookAt(t);
+        cam.updateMatrixWorld();
+        if (pts.every((p) => { q.copy(p).project(cam); return Math.abs(q.x) < limX && q.y > -0.66 && q.y < 0.72; })) break;
+      }
+    }
+    fitDist = mode === "hood" ? hoodFit : mode === "range" ? rangeDist : peakFit.get(mode)!;
+  };
+  const setLimits = () => {
+    controls.maxDistance = mode === "range" ? rangeDist * 1.1 : fitDist * 1.15;
+    controls.minDistance = mode === "range" ? rangeDist * 0.35 : fitDist * 0.1;
+  };
+  // in the all-mountains view everything is drawn a little taller, so the peaks read from far off
+  const WIDE_RELIEF = 1.7;
+  const relief = { value: 1 };
+  const lifted = new THREE.Vector3();
+  const lift = (p: THREE.Vector3) => lifted.set(p.x, p.y * relief.value, p.z);
+  let levelOff: (() => void) | null = null; // what to do once a flight between mountains lands
   // where the camera looks and sits on load and on reset (fitDist must be known)
   const startTarget = () => {
     const camp = landmarkPos.get("government-camp");
@@ -801,13 +978,13 @@ export async function mountHero(
 
   // ---------------------------------------------------------------- camera moves
   let tween: { t0: number; dur: number; fromT: THREE.Vector3; toT: THREE.Vector3; from: THREE.Spherical; to: THREE.Spherical } | null = null;
-  const flyTo = (target: THREE.Vector3, sph: THREE.Spherical) => {
+  const flyTo = (target: THREE.Vector3, sph: THREE.Spherical, dur = 1300) => {
     const from = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
     // turn the short way round
     let dTheta = sph.theta - from.theta;
     dTheta = ((dTheta + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
     const to = new THREE.Spherical(sph.radius, sph.phi, from.theta + dTheta);
-    tween = { t0: performance.now(), dur: reduceMotion ? 0 : 1300, fromT: controls.target.clone(), toT: target.clone(), from, to };
+    tween = { t0: performance.now(), dur: reduceMotion ? 0 : dur, fromT: controls.target.clone(), toT: target.clone(), from, to };
     render();
   };
   const stepTween = () => {
@@ -821,7 +998,12 @@ export async function mountHero(
       THREE.MathUtils.lerp(tween.from.theta, tween.to.theta, e),
     );
     camera.position.setFromSpherical(s).add(controls.target);
-    if (k >= 1) tween = null;
+    if (k >= 1) {
+      tween = null;
+      const done = levelOff;
+      levelOff = null;
+      done?.();
+    }
   };
 
   let selected: string | null = null;
@@ -835,20 +1017,23 @@ export async function mountHero(
     labels.classList.toggle("has-selection", selected !== null);
     for (const a of anchors) a.el.classList.toggle("active", a.id === selected);
     summitEl.classList.toggle("active", selected === "summit");
+    for (const [id, el] of peakLabels) el.classList.toggle("active", id === selected);
   };
 
   const controller: HeroController = {
     select(id) {
       if (id) opts.onInteract?.();
+      if (mode === "range") id = null;
       selected = id && (routeObjs.has(id) || landmarkPos.has(id)) ? id : null;
       highlight();
       opts.onSelect?.(selected);
       clearTimeout(resumeTimer);
       if (!selected) {
-        controls.autoRotate = wantRotate;
+        controls.autoRotate = canTurn();
         return;
       }
       controls.autoRotate = false;
+      if (levelOff) { tween = null; const done = levelOff; levelOff = null; done(); } // land first
       // Picking something never zooms out: if the reader is already closer than the usual view,
       // the camera keeps its distance (and, for a landmark, its angle) and just glides over to it.
       const now = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
@@ -860,11 +1045,12 @@ export async function mountHero(
           return;
         }
         // look at the landmark from its own side of the mountain (the summit: from where we are)
-        const theta = selected === "summit"
+        const c = center();
+        const theta = selected === "summit" || Math.hypot(pos.x - c.x, pos.z - c.z) < 0.4
           ? now.theta
-          : bearingToTheta((THREE.MathUtils.radToDeg(Math.atan2(pos.x, -pos.z)) + 360) % 360);
+          : bearingToTheta((THREE.MathUtils.radToDeg(Math.atan2(pos.x - c.x, -(pos.z - c.z))) + 360) % 360);
         // aim close to the landmark itself so it lands near the middle of the view
-        flyTo(home.clone().lerp(pos, 0.9), new THREE.Spherical(dist, THREE.MathUtils.degToRad(62), theta));
+        flyTo(middle().lerp(pos, 0.9), new THREE.Spherical(dist, THREE.MathUtils.degToRad(62), theta));
         return;
       }
       const o = routeObjs.get(selected)!;
@@ -872,7 +1058,7 @@ export async function mountHero(
       const dist = fitDist * 0.52;
       const close = now.radius < dist;
       // turn to the route's face either way; when zoomed in, centre on the route itself
-      const target = close ? o.focus.clone() : home.clone().lerp(o.focus, 0.55);
+      const target = close ? o.focus.clone() : middle().lerp(o.focus, 0.55);
       flyTo(target, new THREE.Spherical(close ? now.radius : dist, THREE.MathUtils.degToRad(64), bearingToTheta(a.bearing)));
     },
     zoomBy(f) {
@@ -884,12 +1070,48 @@ export async function mountHero(
       selected = null;
       highlight();
       opts.onSelect?.(null);
-      controls.autoRotate = wantRotate;
-      flyTo(startTarget(), startView());
+      controls.autoRotate = canTurn();
+      const v0 = openView();
+      flyTo(v0.target, v0.sph, levelOff ? 1900 : undefined);
+    },
+    faceNorth() {
+      if (levelOff) return;
+      clearTimeout(resumeTimer);
+      controls.autoRotate = false;
+      opts.onInteract?.();
+      const now = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+      flyTo(controls.target.clone(), new THREE.Spherical(now.radius, now.phi, bearingToTheta(180)), 800);
+    },
+    async open(next) {
+      if (next !== "hood") await loadRange();
+      if (next === mode || (next !== "hood" && next !== "range" && !peaks.some((p) => p.id === next))) return;
+      if (selected) controller.select(null);
+      clearTimeout(resumeTimer);
+      controls.autoRotate = false;
+      mode = next;
+      measure();
+      opts.onInteract?.();
+      opts.onMode?.(mode);
+      offsetMoving = true;
+      // everything the camera passes over stays up until it lands
+      hood.visible = true;
+      for (const p of peaks) { p.group.visible = true; p.extras.visible = p.id === mode; }
+      // free the zoom limits and hold the controls for the flight
+      controls.minDistance = 0.5;
+      controls.maxDistance = 600;
+      controls.enabled = false;
+      levelOff = () => {
+        controls.enabled = true;
+        setLimits();
+        controls.autoRotate = canTurn();
+        render();
+      };
+      const v0 = openView();
+      flyTo(v0.target, v0.sph, 1900);
     },
     setAutoRotate(on) {
       wantRotate = on;
-      controls.autoRotate = on && !selected;
+      controls.autoRotate = canTurn();
     },
     setLabels(on) { labels.classList.toggle("off", !on); },
     setTrees(on) { trees.visible = on; render(); },
@@ -910,7 +1132,8 @@ export async function mountHero(
   let offsetMoving = false;
   const offsetTarget = () => {
     const h = container.clientHeight;
-    return { x: -(insets.left - insets.right) / 2, y: h * 0.07 - (insets.top - insets.bottom) / 2 };
+    const left = mode === "hood" || container.clientWidth <= 760 ? 0 : mode === "range" ? RANGE_PANEL : RANGE_PANEL / 2; // the list
+    return { x: -(Math.max(insets.left, left) - insets.right) / 2, y: h * 0.07 - (insets.top - insets.bottom) / 2 };
   };
   const applyOffset = () => {
     const w = container.clientWidth, h = container.clientHeight;
@@ -940,16 +1163,24 @@ export async function mountHero(
     const halfV = ((R * 2 * Math.cos(polar) + peak * Math.sin(polar)) / 2) * 1.12;
     const halfH = R * 1.0;
     const dist = Math.max(halfV / Math.tan(vfov / 2), halfH / Math.tan(hfov / 2));
-    const first = fitDist === 0;
-    fitDist = dist;
+    const first = hoodFit === 0;
+    hoodFit = dist;
     startDist = Math.min(dist, Math.max((R * START_HEIGHT) / Math.tan(vfov / 2), (R * START_WIDTH) / Math.tan(hfov / 2)));
-    controls.maxDistance = dist * 1.15;
-    controls.minDistance = dist * 0.1; // close enough to pick out Government Camp's buildings
+    measure();
+    if (!levelOff) setLimits();
     if (first) {
       controls.target.copy(startTarget());
       camera.position.setFromSpherical(startView()).add(controls.target);
-    } else if (!selected) {
-      camera.position.sub(controls.target).clampLength(controls.minDistance, dist).add(controls.target);
+    } else if (mode === "range") {
+      const v0 = openView();
+      tween = null;
+      const done = levelOff;
+      levelOff = null;
+      done?.();
+      controls.target.copy(v0.target);
+      camera.position.setFromSpherical(v0.sph).add(v0.target);
+    } else if (!selected && !levelOff) {
+      camera.position.sub(controls.target).clampLength(controls.minDistance, fitDist).add(controls.target);
     }
     camera.updateProjectionMatrix();
     controls.update();
@@ -965,7 +1196,7 @@ export async function mountHero(
     el.classList.toggle("hidden", !show);
   };
   let queued = false;
-  let lastFacing = "";
+  let lastFacing = "", lastHeading = -1;
   function render() {
     if (queued) return;
     queued = true;
@@ -973,21 +1204,49 @@ export async function mountHero(
       queued = false;
       renderer.render(scene, camera);
       // only label routes on the side facing the camera
-      const camBearing = (THREE.MathUtils.radToDeg(Math.atan2(camera.position.x, -camera.position.z)) + 360) % 360;
+      const camBearing = (THREE.MathUtils.radToDeg(Math.atan2(camera.position.x - center().x, -(camera.position.z - center().z))) + 360) % 360;
+      const look = camera.position.clone().sub(controls.target);
+      const heading = (THREE.MathUtils.radToDeg(Math.atan2(look.x, -look.z)) + 540) % 360;
+      if (Math.abs(heading - lastHeading) > 0.2) { lastHeading = heading; opts.onHeading?.(heading); }
       const facing: string[] = [];
       for (const a of anchors) {
         const diff = Math.abs(((a.bearing - camBearing + 540) % 360) - 180);
         // landmarks lower on the flanks stay visible a little further round than route labels
-        const faces = diff < (a.landmark ? 95 : 75);
-        if (faces) facing.push(a.id);
+        const faces = Number.isNaN(a.bearing) || diff < (a.landmark ? 95 : 75);
+        if (faces && (a.peak?.id ?? "hood") === mode) facing.push(a.id);
         const near = !a.minor || camera.position.distanceTo(a.pos) < fitDist * 0.45;
-        place(a.el, a.pos, selected ? a.id === selected : near && faces);
+        const open = (a.peak?.id ?? "hood") === mode && !levelOff;
+        place(a.el, a.pos, open && (selected ? a.id === selected : near && faces));
       }
-      place(summitEl, summitPos, true);
+      place(summitEl, lift(summitPos), mode === "hood" || mode === "range");
+      for (const p of peaks) place(peakLabels.get(p.id)!, lift(p.top), mode === p.id || mode === "range");
+      placePlaces();
       const key = facing.join(",");
       if (key !== lastFacing) { lastFacing = key; opts.onFacing?.(facing); }
       declutter();
     });
+  }
+
+  // Places on the regional map give way to the mountains' names, and to places listed before them.
+  function placePlaces() {
+    if (!placeEls.length) return;
+    const show = mode === "range" && !levelOff;
+    for (const p of placeEls) place(p.el, p.pos, show);
+    if (!show) return;
+    const taken = [summitEl, ...peakLabels.values()].flatMap((el) => [...el.children].map((c) => c.getBoundingClientRect()));
+    // the mountains themselves, as boxes on screen
+    const c = container.getBoundingClientRect(), side = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const solid = [{ center: ORIGIN, radius: R, top: summitPos }, ...peaks].map((p) => {
+      const at = (q: THREE.Vector3) => { v.copy(q).project(camera); return { x: c.left + (v.x * 0.5 + 0.5) * c.width, y: c.top + (-v.y * 0.5 + 0.5) * c.height }; };
+      const a = at(p.center.clone().addScaledVector(side, -p.radius * 0.45)), b = at(p.center.clone().addScaledVector(side, p.radius * 0.45));
+      return { left: a.x, right: b.x, top: at(lift(p.top).clone()).y, bottom: Math.max(a.y, b.y) };
+    });
+    for (const p of placeEls) {
+      const r = p.el.getBoundingClientRect();
+      const hit = [...taken, ...solid].some((t) => r.left < t.right + 3 && r.right > t.left - 3 && r.top < t.bottom + 2 && r.bottom > t.top - 2);
+      if (hit) p.el.classList.add("hidden");
+      else taken.push(r);
+    }
   }
 
   // Nudge overlapping labels apart (lower one moves down).
@@ -1011,11 +1270,62 @@ export async function mountHero(
     for (const b of boxes) if (b.top !== b.top0) b.el.style.marginTop = `${(b.top - b.top0).toFixed(1)}px`;
   }
 
+  // Mountains fade in and out as the reader moves between them, and far away the contour lines
+  // open out (they would merge into grey).
+  let wide = false, lastRange = performance.now();
+  function stepRange() {
+    if (!peaks.length) return false;
+    let moving = false;
+    const now = performance.now();
+    const k = 1 - Math.exp(-Math.min(now - lastRange, 200) / 220); // the same speed at any frame rate
+    lastRange = now;
+    const ease = (u: { value: number }, to: number) => {
+      if (u.value === to) return;
+      u.value = reduceMotion || Math.abs(to - u.value) < 0.01 ? to : u.value + (to - u.value) * k;
+      moving = true;
+    };
+    const showHood = mode === "hood" || mode === "range" ? 1 : 0;
+    hoodFades.forEach((m, i) => {
+      ease(m.uniforms.uOpacity, showHood);
+      // draw Hood's forest in a little while its neighbours are beside it
+      ease(m.uniforms.uFade1, hoodTerrainFade[i] * (mode === "range" ? 0.6 : 1));
+    });
+    hood.visible = hoodFades[0].uniforms.uOpacity.value > 0.01;
+    // routes and outlines can't fade, so they go at once
+    for (const c of hood.children) if (!(c as THREE.Mesh).isMesh || !hoodFades.includes((c as THREE.Mesh).material as THREE.ShaderMaterial)) c.visible = mode === "hood" || (mode === "range" && !!c.userData.route && routeObjs.has(c.userData.route));
+    if (region) {
+      ease(region.material.uniforms.uOpacity, mode === "range" ? 1 : 0);
+      region.mesh.visible = region.material.uniforms.uOpacity.value > 0.01;
+      region.bar.visible = mode === "range" && !levelOff;
+    }
+    const sink = mode === "range" ? 1 : 0;
+    for (const m of [...hoodFades, ...peaks.flatMap((p) => p.mats)]) ease(m.uniforms.uSink, sink);
+    ease(relief, mode === "range" ? WIDE_RELIEF : 1);
+    hood.scale.y = relief.value;
+    for (const p of peaks) {
+      p.group.scale.y = relief.value;
+      for (const m of p.mats) ease(m.uniforms.uFade1, p.radius * (mode === "range" ? 0.8 : 0.97));
+      for (const m of p.mats) ease(m.uniforms.uFade0, p.radius * (mode === "range" ? 0.5 : 0.72));
+      const to = mode === "range" || mode === p.id ? 1 : 0;
+      for (const m of p.mats) ease(m.uniforms.uOpacity, to);
+      p.group.visible = p.mats[0].uniforms.uOpacity.value > 0.01;
+    }
+    const nowWide = camera.position.distanceTo(controls.target) > hoodFit * 1.7;
+    if (nowWide !== wide) {
+      wide = nowWide;
+      moving = true;
+      for (const m of [mats.terrain, ...peaks.map((p) => p.terrain)]) m.uniforms.uContour.value = wide ? 500 : 100;
+      trees.visible = !wide;
+    }
+    return moving;
+  }
+
   let visible = true;
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(container);
   renderer.setAnimationLoop(() => {
     if (!visible || document.hidden) return;
     if (tween) { stepTween(); render(); }
+    if (stepRange()) render();
     if (offsetMoving) { stepOffset(); render(); }
     if (puffs.length) { stepSmoke(performance.now() / 1000); render(); }
     controls.update();

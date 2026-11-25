@@ -82,3 +82,24 @@ terrain. The lines are approximate (right face, right features), not surveys of 
 To refresh the OpenStreetMap data, post `osm-routes.overpass` to the Overpass API and save the result as
 `.cache/osm-routes.json`, then run `prepare.py` and `terrain3d.py`. After moving a route, copy the bearings
 `prepare.py` computes (see `src/data/hero-terrain.json`) into `src/data/routes.ts`.
+
+## The surrounding mountains (Expand)
+
+The Expand button opens Rainier, St. Helens, Adams, Jefferson and the Three Sisters
+(`src/scripts/range3d.ts`, loaded only then). Names, cards, sources, routes and landmarks are in
+`src/data/range.json`; `range.py` turns them into `public/hero/range-<id>.png` and
+`src/data/range-terrain.json`:
+
+```sh
+curl -s --data-urlencode "data@scripts/hero/osm-range.overpass" https://overpass-api.de/api/interpreter \
+  -o scripts/hero/.cache/osm-range.json
+python scripts/hero/range.py      # fetches elevation tiles as needed
+```
+
+The mountains stand on a map of the Pacific Northwest (`src/scripts/region3d.ts`), made by
+`python scripts/hero/region.py`: terrain from the same elevation tiles, rivers from Natural Earth
+(public domain), and a list of towns at the top of the script. Forest and dry country are approximate.
+
+The map is to scale (`SPREAD` in `range3d.ts`) and each mountain is at its true position, drawn
+1 / `SPREAD` (4) times larger than the map around it. Relief is drawn taller in the all-mountains view
+(`WIDE_RELIEF` in `hero3d.ts`). Treelines (`treelineM`) and lines without an OpenStreetMap way are approximate.

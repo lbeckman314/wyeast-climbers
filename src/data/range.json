@@ -1,0 +1,450 @@
+[
+ {
+  "id": "rainier",
+  "name": "Mount Rainier",
+  "ft": 14410,
+  "lat": 46.8529,
+  "lon": -121.7604,
+  "radiusKm": 10.5,
+  "summary": "The highest mountain in Washington. Hazard Stevens and P. B. Van Trump received a hero's welcome in Olympia after climbing it in 1870; Fay Fuller made the first ascent by a woman in 1890.",
+  "sources": [
+   "wikipedia-mount-rainier"
+  ],
+  "routes": [
+   {
+    "id": "rainier-dc",
+    "name": "Disappointment Cleaver",
+    "path": [
+     [
+      46.7868,
+      -121.7338,
+      "Paradise"
+     ],
+     {
+      "osm": "Camp Muir Route"
+     },
+     {
+      "osm": "Disappointment Cleaver Route"
+     }
+    ],
+    "summary": "The normal route to the summit, by way of Camp Muir. About 90 percent of attempts use the routes from Camp Muir.",
+    "sources": [
+     "wikipedia-mount-rainier",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "rainier-emmons",
+    "name": "Emmons Glacier",
+    "path": [
+     {
+      "osm": "Glacier Basin Trail"
+     },
+     {
+      "osm": "Inter Glacier Route"
+     },
+     [
+      46.8704,
+      -121.7329,
+      "Camp Schurman"
+     ],
+     {
+      "osm": "Emmons Glacier Route"
+     }
+    ],
+    "summary": "By Camp Schurman on the northeast side, an alternative to Disappointment Cleaver with a lower technical challenge.",
+    "sources": [
+     "wikipedia-mount-rainier",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "rainier-liberty",
+    "name": "Liberty Ridge",
+    "path": [
+     {
+      "way": 1090403752
+     },
+     [
+      46.863,
+      -121.7749,
+      "Liberty Cap"
+     ]
+    ],
+    "summary": "The ridge on the north side below Liberty Cap, considerably harder and more dangerous than the normal route.",
+    "sources": [
+     "wikipedia-mount-rainier",
+     "openstreetmap"
+    ]
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "rainier-paradise",
+    "name": "Paradise Inn",
+    "lat": 46.78498,
+    "lon": -121.73264,
+    "summary": "Built in 1916 and opened July 1, 1917. Many climbers start here.",
+    "sources": [
+     "wikipedia-paradise-inn"
+    ]
+   },
+   {
+    "id": "rainier-muir",
+    "name": "Camp Muir",
+    "lat": 46.83556,
+    "lon": -121.73139,
+    "summary": "The mountain's most-used high camp, named for John Muir. The Mountaineers built its guide shelter in 1916; the public shelter followed in 1921.",
+    "sources": [
+     "wikipedia-camp-muir"
+    ]
+   },
+   {
+    "id": "rainier-schurman",
+    "name": "Camp Schurman",
+    "lat": 46.8704,
+    "lon": -121.7329,
+    "summary": "The high camp on the Emmons Glacier route.",
+    "sources": [
+     "wikipedia-mount-rainier",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "rainier-tahoma",
+    "name": "Little Tahoma",
+    "lat": 46.84955,
+    "lon": -121.71232,
+    "summary": "A satellite peak, the remnant of a once larger Rainier. First recorded ascent August 29, 1894, by J. B. Flett and Henry H. Garrison.",
+    "sources": [
+     "wikipedia-little-tahoma"
+    ]
+   }
+  ],
+  "treelineM": 1900
+ },
+ {
+  "id": "st-helens",
+  "name": "Mount St. Helens",
+  "ft": 8363,
+  "lat": 46.1914,
+  "lon": -122.1956,
+  "radiusKm": 11.5,
+  "bare": [
+   46.2,
+   -122.1886,
+   9.5
+  ],
+  "summary": "Shown as it is today. On May 18, 1980, the north face collapsed and the summit dropped from 9,677 to 8,363 feet, so the Wy'easters knew a taller, whole mountain.",
+  "sources": [
+   "wikipedia-mount-st-helens"
+  ],
+  "routes": [
+   {
+    "id": "helens-monitor",
+    "name": "Monitor Ridge",
+    "path": [
+     {
+      "osm": "Ptarmigan Trail"
+     },
+     {
+      "osm": "Monitor Ridge Climbing Route"
+     }
+    ],
+    "summary": "The standard route in the warmer months: about 4,600 feet of climbing in about five miles from Climbers Bivouac to the crater rim.",
+    "sources": [
+     "wikipedia-mount-st-helens",
+     "openstreetmap"
+    ],
+    "toSummit": false
+   },
+   {
+    "id": "helens-worm",
+    "name": "Worm Flows",
+    "path": [
+     {
+      "osm": "Worm Flows Climbing Route"
+     }
+    ],
+    "summary": "Considered the standard winter route.",
+    "sources": [
+     "wikipedia-mount-st-helens",
+     "openstreetmap"
+    ],
+    "toSummit": false
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "helens-dome",
+    "name": "Lava Dome",
+    "lat": 46.1997,
+    "lon": -122.1888,
+    "summary": "The dome inside the mile-wide, horseshoe-shaped crater left by the 1980 eruption.",
+    "sources": [
+     "wikipedia-mount-st-helens",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "helens-spirit",
+    "name": "Spirit Lake",
+    "lat": 46.2725,
+    "lon": -122.1388,
+    "summary": "Before 1980 the lake had several lodges. One was run by Harry Truman, who had lived near the mountain since 1929 and refused to leave before the eruption.",
+    "sources": [
+     "wikipedia-spirit-lake",
+     "wikipedia-mount-st-helens"
+    ]
+   }
+  ],
+  "treelineM": 1450
+ },
+ {
+  "id": "adams",
+  "name": "Mount Adams",
+  "ft": 12276,
+  "lat": 46.2024,
+  "lon": -121.4909,
+  "radiusKm": 9,
+  "summary": "The second-highest mountain in Washington. Andrew Glenn Aiken, Edward Jay Allen and Andrew J. Burge made the first ascent in 1854.",
+  "sources": [
+   "wikipedia-mount-adams"
+  ],
+  "routes": [
+   {
+    "id": "adams-south",
+    "name": "South Climb",
+    "path": [
+     {
+      "osm": "South Climb Trail"
+     },
+     {
+      "osm": "South Climb"
+     }
+    ],
+    "summary": "The easiest route to the summit, non-technical, up the south spur.",
+    "sources": [
+     "wikipedia-mount-adams",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "adams-north",
+    "name": "North Cleaver",
+    "path": [
+     {
+      "osm": "North Cleaver Trail"
+     }
+    ],
+    "summary": "The ridge running almost due north from below the summit ice cap. The 1854 first ascent likely went this way.",
+    "sources": [
+     "wikipedia-mount-adams",
+     "openstreetmap"
+    ]
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "adams-pikers",
+    "name": "Pikers Peak",
+    "lat": 46.1951,
+    "lon": -121.4869,
+    "summary": "The false summit on the south side, 11,657 feet.",
+    "sources": [
+     "wikipedia-mount-adams",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "adams-lookout",
+    "name": "Summit lookout",
+    "lat": 46.2024,
+    "lon": -121.4909,
+    "summary": "The Forest Service built a fire lookout on the summit, staffing it through 1924. Smoke and low cloud too often hid the view, and it was abandoned; miners later sheltered in it.",
+    "sources": [
+     "wikipedia-mount-adams"
+    ]
+   }
+  ],
+  "treelineM": 1980
+ },
+ {
+  "id": "jefferson",
+  "name": "Mount Jefferson",
+  "ft": 10497,
+  "lat": 44.6743,
+  "lon": -121.7996,
+  "radiusKm": 9,
+  "summary": "Oregon's second-highest mountain, also known as Seekseekqua. The first ascent was probably made by E. C. Cross and R. L. Farmer on August 12, 1888.",
+  "sources": [
+   "wikipedia-mount-jefferson"
+  ],
+  "routes": [
+   {
+    "id": "jefferson-south",
+    "name": "South Ridge",
+    "path": [
+     [
+      44.6475,
+      -121.7985,
+      "saddle north of Goat Peak"
+     ],
+     [
+      44.658,
+      -121.7985,
+      "lower ridge"
+     ],
+     [
+      44.667,
+      -121.799,
+      "upper ridge"
+     ]
+    ],
+    "summary": "The line of the probable first ascent in 1888. The summit pinnacle is especially challenging.",
+    "sources": [
+     "wikipedia-mount-jefferson"
+    ]
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "jefferson-park",
+    "name": "Jefferson Park",
+    "lat": 44.7108,
+    "lon": -121.806,
+    "summary": "The lake basin on the mountain's northern slope, reached by the Whitewater and Pacific Crest trails.",
+    "sources": [
+     "wikipedia-mount-jefferson",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "jefferson-whitewater",
+    "name": "Whitewater Glacier",
+    "lat": 44.6829,
+    "lon": -121.7925,
+    "summary": "One of four named glaciers. It has shrunk considerably in recent years.",
+    "sources": [
+     "wikipedia-mount-jefferson",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "jefferson-pamelia",
+    "name": "Pamelia Lake",
+    "lat": 44.6527,
+    "lon": -121.8468,
+    "summary": "A popular lake on the southwest side with a limited number of visitors each day.",
+    "sources": [
+     "wikipedia-mount-jefferson",
+     "openstreetmap"
+    ]
+   }
+  ],
+  "treelineM": 1950
+ },
+ {
+  "id": "sisters",
+  "name": "Three Sisters",
+  "ft": 10358,
+  "lat": 44.135,
+  "lon": -121.774,
+  "radiusKm": 10.5,
+  "noSummit": true,
+  "summary": "The third-, fourth- and fifth-highest peaks in Oregon. The height shown is South Sister's.",
+  "sources": [
+   "wikipedia-three-sisters"
+  ],
+  "routes": [
+   {
+    "id": "sisters-south-trail",
+    "name": "South Sister Climber Trail",
+    "path": [
+     {
+      "osm": "South Sister Climber Trail #36"
+     },
+     [
+      44.1035,
+      -121.7693,
+      "South Sister"
+     ]
+    ],
+    "summary": "South Sister is the easiest of the three, with a trail all the way to the summit.",
+    "sources": [
+     "wikipedia-three-sisters",
+     "openstreetmap"
+    ],
+    "toSummit": false
+   },
+   {
+    "id": "sisters-hayden",
+    "name": "Hayden climbers' trail",
+    "path": [
+     {
+      "way": 543158467
+     }
+    ],
+    "summary": "A climbers' trail on the east side, toward the Hayden Glacier between North and Middle Sister.",
+    "sources": [
+     "openstreetmap"
+    ],
+    "toSummit": false
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "sisters-north",
+    "name": "North Sister",
+    "lat": 44.1666,
+    "lon": -121.7723,
+    "summary": "The most dangerous climb of the three because of erosion and rockfall, often called the \"Beast of the Cascades.\" 10,090 feet.",
+    "sources": [
+     "wikipedia-three-sisters"
+    ]
+   },
+   {
+    "id": "sisters-middle",
+    "name": "Middle Sister",
+    "lat": 44.1484,
+    "lon": -121.7841,
+    "summary": "The cone-shaped sister, 10,052 feet.",
+    "sources": [
+     "wikipedia-three-sisters"
+    ]
+   },
+   {
+    "id": "sisters-south",
+    "name": "South Sister",
+    "lat": 44.1035,
+    "lon": -121.7693,
+    "summary": "The highest of the three, 10,358 feet.",
+    "sources": [
+     "wikipedia-three-sisters"
+    ]
+   },
+   {
+    "id": "sisters-collier",
+    "name": "Collier Glacier",
+    "lat": 44.1627,
+    "lon": -121.786,
+    "summary": "Between North and Middle Sister. It retreated 4,900 feet and lost 64 percent of its area between 1910 and 1994.",
+    "sources": [
+     "wikipedia-three-sisters",
+     "openstreetmap"
+    ]
+   },
+   {
+    "id": "sisters-green",
+    "name": "Green Lakes",
+    "lat": 44.0872,
+    "lon": -121.7313,
+    "summary": "Lakes in the basin east of South Sister.",
+    "sources": [
+     "openstreetmap"
+    ]
+   }
+  ],
+  "treelineM": 2080
+ }
+]

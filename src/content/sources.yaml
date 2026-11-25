@@ -178,3 +178,57 @@
   note: >-
     Positions of roads, ski trails, peaks and Government Camp's buildings on the 3D map
     (Open Database License).
+
+- id: wikipedia-mount-rainier
+  title: "Mount Rainier"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Mount_Rainier
+  kind: web
+
+- id: wikipedia-paradise-inn
+  title: "Paradise Inn (Washington)"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Paradise_Inn_(Washington)
+  kind: web
+
+- id: wikipedia-camp-muir
+  title: "Camp Muir"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Camp_Muir
+  kind: web
+
+- id: wikipedia-little-tahoma
+  title: "Little Tahoma Peak"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Little_Tahoma_Peak
+  kind: web
+
+- id: wikipedia-mount-st-helens
+  title: "Mount St. Helens"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Mount_St._Helens
+  kind: web
+
+- id: wikipedia-spirit-lake
+  title: "Spirit Lake (Washington)"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Spirit_Lake_(Washington)
+  kind: web
+
+- id: wikipedia-mount-adams
+  title: "Mount Adams (Washington)"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Mount_Adams_(Washington)
+  kind: web
+
+- id: wikipedia-mount-jefferson
+  title: "Mount Jefferson (Oregon)"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Mount_Jefferson_(Oregon)
+  kind: web
+
+- id: wikipedia-three-sisters
+  title: "Three Sisters (Oregon)"
+  publisher: Wikipedia
+  url: https://en.wikipedia.org/wiki/Three_Sisters_(Oregon)
+  kind: web

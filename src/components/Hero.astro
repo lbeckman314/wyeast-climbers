@@ -7,6 +7,7 @@
 import { getCollection } from "astro:content";
 import { routes, kindLabels } from "../data/routes";
 import landmarks from "../data/landmarks.json";
+import range from "../data/range.json";
 import { cardImage, type CardImage } from "../card-images";
 
 // ski trails get their own heading in the list
@@ -21,6 +22,17 @@ const sources = await getCollection("sources");
 // card photos: checked for a free license or a granted permission, and resized (src/card-images.ts)
 const permissions = await getCollection("permissions");
 const granted = (id: string) => permissions.find((p) => p.id === id)?.data.status === "granted";
+const cite = (ids: string[]) => ids.map((id) => {
+  const s = sources.find((x) => x.id === id);
+  if (!s) throw new Error(`The map cites unknown source "${id}"`);
+  return { title: s.data.title, href: s.data.url ?? `#source-${id}` };
+});
+// the surrounding mountains' cards: each mountain, its routes and its landmarks
+const rangeCards = range.flatMap((p) => [
+  { id: p.id, kind: "Mountain", name: p.name, summary: p.summary, sources: cite(p.sources) },
+  ...p.routes.map((r) => ({ id: r.id, kind: "Major route", name: r.name, summary: r.summary, sources: cite(r.sources) })),
+  ...p.landmarks.map((l) => ({ id: l.id, kind: "Landmark", name: l.name, summary: l.summary, sources: cite(l.sources) })),
+]);
 const landmarkCards = await Promise.all(landmarks.map(async (l) => ({
   id: l.id, name: l.name, summary: l.summary, milestone: l.milestone, trail: "trail" in l,
   sources: l.sources.map((id) => {
@@ -33,11 +45,35 @@ const routeImages = Object.fromEntries(
   (await Promise.all(routes.map(async (r) => [r.id, await cardImage(r.id, r.image, granted)] as const))).filter(([, img]) => img),
 );
 ---
-<section class="stage" id="map" aria-label="Interactive map of the Wy'east Climbers' routes on Mount Hood" data-landmarks={JSON.stringify(landmarkCards)} data-route-images={JSON.stringify(routeImages)}>
+<section class="stage" id="map" aria-label="Interactive map of the Wy'east Climbers' routes on Mount Hood" data-mode="hood" data-landmarks={JSON.stringify([...landmarkCards, ...rangeCards])} data-route-images={JSON.stringify(routeImages)}>
   <div class="hero3d" role="img" aria-label="A three-dimensional model of Mount Hood and the forest around it, with the routes the Wy'east Climbers pioneered or reopened drawn on its flanks. Drag to turn, scroll or pinch to zoom."></div>
 
   <div class="stage-ui">
     <aside class="panel routes-panel" aria-label="Routes and landmarks">
+      <div data-list="range" hidden>
+        <h2 class="panel-title">Mountains</h2>
+        <ul>
+          {[{ id: "hood", name: "Mount Hood", ft: 11249 }, ...range].map((p) => (
+            <li><button type="button" data-peak={p.id} class="landmark"><i aria-hidden="true"></i><span>{p.name}</span></button></li>
+          ))}
+        </ul>
+      </div>
+      {range.map((p) => (
+        <div data-list={p.id} hidden>
+          <h2 class="panel-title">{p.name}</h2>
+          <ul>
+            <li><button type="button" data-route={p.id} class="landmark" aria-pressed="false"><i aria-hidden="true"></i><span>About the mountain</span></button></li>
+            {p.routes.map((r) => (
+              <li><button type="button" data-route={r.id} class="major" aria-pressed="false"><i aria-hidden="true"></i><span>{r.name}</span></button></li>
+            ))}
+            <li class="list-heading"><h2 class="panel-title">Landmarks</h2></li>
+            {p.landmarks.map((l) => (
+              <li><button type="button" data-route={l.id} class="landmark" aria-pressed="false"><i aria-hidden="true"></i><span>{l.name}</span></button></li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <div data-list="hood">
       <h2 class="panel-title">Routes</h2>
       <!-- one list so the phone layout can show routes and landmarks as a single row of chips;
            data-route holds the id of either -->
@@ -66,6 +102,7 @@ const routeImages = Object.fromEntries(
           </li>
         ))}
       </ul>
+      </div>
     </aside>
 
     <aside class="panel detail" aria-live="polite" hidden>
@@ -84,6 +121,7 @@ const routeImages = Object.fromEntries(
     <aside class="panel view-panel" aria-label="Key">
       <h2 class="panel-title">Key</h2>
       <div class="legend">
+        <span class="major"><i></i>Major route</span>
         <span class="first-ascent"><i></i>First ascent</span>
         <span class="reopened"><i></i>Reopened</span>
         <span class="standard"><i></i>Standard route</span>
@@ -99,6 +137,20 @@ const routeImages = Object.fromEntries(
       <button type="button" class="tip-close" aria-label="Dismiss tip"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
 
+    <button type="button" class="compass" aria-label="Turn to face north" title="Turn to face north">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <g class="rose">
+          <path d="M24 15l4 9h-8z" fill="#b23426"/><path d="M24 34l4-10h-8z" fill="currentColor"/>
+          <text x="24" y="13" class="n">N</text><text x="38" y="26.8">E</text><text x="24" y="42">S</text><text x="10" y="26.8">W</text>
+        </g>
+      </svg>
+    </button>
+
+    <button type="button" class="expand-view" aria-label="Show the surrounding mountains" title="Show the surrounding mountains">
+      <svg class="i-out" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="i-in" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10h-6V4M14 10l7-7M4 14h6v6M10 14l-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
     <button type="button" class="reset-view" aria-label="Reset view" title="Reset view">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 9.5A7 7 0 1 1 5 14.5M5.5 4v5.5H11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -106,7 +158,7 @@ const routeImages = Object.fromEntries(
     <div class="stage-title">
       <p class="kicker">Portland, Oregon · 1930–1942</p>
       <h1>The Wy'east Climbers</h1>
-      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a></p>
+      <p class="credit">Elevation: USGS 3DEP · Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a><span class="range-note"> · Rivers: Natural Earth · Map to scale, mountains enlarged</span></p>
     </div>
 
     <p class="esc-note" role="status" aria-live="polite"></p>
@@ -141,7 +193,7 @@ const routeImages = Object.fromEntries(
   addEventListener("resize", fit);
 
   type CardImg = { src: string; alt: string; credit: string; license: string; url?: string };
-  type LandmarkCard = { id: string; name: string; summary: string; milestone?: string; trail?: boolean; image?: CardImg; sources: { title: string; href: string }[] };
+  type LandmarkCard = { id: string; name: string; summary: string; milestone?: string; trail?: boolean; kind?: string; image?: CardImg; sources: { title: string; href: string }[] };
   const landmarkCards: LandmarkCard[] = JSON.parse(stage.dataset.landmarks ?? "[]");
   const routeImages: Record<string, CardImg> = JSON.parse(stage.dataset.routeImages ?? "{}");
 
@@ -164,8 +216,8 @@ const routeImages = Object.fromEntries(
     queueMicrotask(updateInsets);
     if (!item) stage.classList.remove("has-image");
     if (!item) return;
-    detail.className = `panel detail ${r ? r.kind : "landmark"}`;
-    detail.querySelector(".kind")!.textContent = r ? kindLabels[r.kind] : l?.trail ? "Ski trail" : "Landmark";
+    detail.className = `panel detail ${r ? r.kind : l?.kind === "Major route" ? "major" : "landmark"}`;
+    detail.querySelector(".kind")!.textContent = r ? kindLabels[r.kind] : l?.kind ?? (l?.trail ? "Ski trail" : "Landmark");
     detail.querySelector("h3")!.textContent = item.name;
     // photo, with its credit and license under it
     const image = r ? routeImages[r.id] : l?.image;
@@ -221,6 +273,30 @@ const routeImages = Object.fromEntries(
   // (optional chaining: if the button is ever removed from the markup, the map still loads)
   stage.querySelector(".reset-view")?.addEventListener("click", () => (hero ? hero.reset() : show(null)));
 
+
+  // Compass: turns with the model; a click faces north.
+  const rose = stage.querySelector<SVGGElement>(".compass .rose")!;
+  stage.querySelector(".compass")!.addEventListener("click", () => hero?.faceNorth());
+
+  // Expand: from Hood (or another mountain) out to all of them; from there, back to Hood.
+  const expand = stage.querySelector<HTMLButtonElement>(".expand-view")!;
+  const setMode = (mode: string) => {
+    stage.dataset.mode = mode;
+    stage.querySelectorAll<HTMLElement>("[data-list]").forEach((el) => (el.hidden = el.dataset.list !== mode));
+    const label = mode === "range" ? "Back to Mount Hood" : mode === "hood" ? "Show the surrounding mountains" : "Show all the mountains";
+    expand.setAttribute("aria-label", label);
+    expand.title = label;
+  };
+  let wantedMode: string | null = null;
+  const openMode = async (mode: string) => {
+    if (!hero) { wantedMode = mode; return; } // still loading: open it once the model is up
+    expand.setAttribute("aria-busy", "true");
+    try { await hero.open(mode); }
+    catch { escNote.textContent = "The other mountains couldn't be loaded. Please try again."; escNote.classList.add("show"); setTimeout(() => escNote.classList.remove("show"), 4000); }
+    expand.removeAttribute("aria-busy");
+  };
+  expand.addEventListener("click", () => openMode(stage.dataset.mode === "range" ? "hood" : "range"));
+  stage.querySelectorAll<HTMLButtonElement>("[data-peak]").forEach((b) => b.addEventListener("click", () => openMode(b.dataset.peak!)));
 
   // Tip: shown on every page load once the model is up; gone after the first interaction
   // (or ×, or Escape) until the next load.
@@ -312,6 +388,8 @@ const routeImages = Object.fromEntries(
       .then((m) => m.mountHero(view, {
         insets: coverage(),
         onSelect: show,
+        onMode: setMode,
+        onHeading: (deg) => rose.setAttribute("transform", `rotate(${(-deg).toFixed(1)} 24 24)`),
         onInteract: dismissTip,
         // chips for routes and landmarks on the far side of the mountain fade (phones; see CSS)
         onFacing: (ids) => buttons.forEach((b) => b.classList.toggle("away", b.dataset.route !== "summit" && !ids.includes(b.dataset.route!))),
@@ -323,6 +401,7 @@ const routeImages = Object.fromEntries(
         // Catch up on a route the reader picked while the model was loading.
         const picked = buttons.find((b) => b.getAttribute("aria-pressed") === "true");
         if (picked) c.select(picked.dataset.route!);
+        if (wantedMode) void openMode(wantedMode);
       })
       .catch(() => stage.classList.add("no-webgl"));
   if ("requestIdleCallback" in window) requestIdleCallback(start, { timeout: 1200 });
@@ -342,7 +421,7 @@ const routeImages = Object.fromEntries(
     border-bottom: 1px solid var(--rule);
   }
   .stage.no-webgl { background: var(--paper-2) var(--hero-poster) center 70% / cover no-repeat; }
-  .stage.no-webgl .hint, .stage.no-webgl .view-panel, .stage.no-webgl .reset-view { display: none; }
+  .stage.no-webgl .hint, .stage.no-webgl .view-panel, .stage.no-webgl .reset-view, .stage.no-webgl :is(.expand-view, .compass) { display: none; }
   .hero3d { position: absolute; inset: 0; }
   .hero3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 0.8s ease; cursor: grab; }
   .hero3d canvas:active { cursor: grabbing; }
@@ -378,6 +457,13 @@ const routeImages = Object.fromEntries(
   .routes-panel button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
   .routes-panel i, .legend i, .hero3d-label i { flex: none; width: 1.1rem; height: 0; border-top: 3px solid; }
   .first-ascent i { border-top: 3px solid #b23426; }
+  .major i { border-top: 3px solid #2d6a74; }
+  /* the key and the credit follow what's on the map */
+  .legend .major, .range-note { display: none; }
+  .stage:not([data-mode="hood"]) .legend > :not(.major, .landmark) { display: none; }
+  .stage:not([data-mode="hood"]) .legend .major { display: flex; }
+  .stage[data-mode="range"] .view-panel { display: none; }
+  .stage[data-mode="range"] .range-note { display: inline; }
   /* landmarks: an ink diamond, like the marker on the model */
   /* ski trails: dashed blue; roads: grey */
   .routes-panel .trail i, .legend .trail i, .hero3d-label.trail i {
@@ -399,6 +485,15 @@ const routeImages = Object.fromEntries(
   .card-image figcaption { margin: 0; padding: 0.35rem 1rem 0; font: 0.68rem/1.35 var(--sans); color: var(--ink-soft); }
   .card-image figcaption a { color: inherit; }
   .detail.has-image .close { z-index: 1; top: 0.5rem; right: 0.5rem; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--paper); border: 1.5px solid var(--ink); color: var(--ink); }
+  /* places on the regional map */
+  .hero3d-place { position: absolute; left: 0; top: 0; translate: -50% -50%; white-space: nowrap; pointer-events: none; will-change: transform; transition: opacity 0.35s ease; color: var(--ink); font: 600 0.7rem/1 var(--sans); text-shadow: 0 0 4px var(--paper), 0 0 2px var(--paper); }
+  .hero3d-place.hidden { opacity: 0; }
+  .hero3d-place.city { translate: -0.2rem -50%; }
+  .hero3d-place.city::before { content: ""; display: inline-block; width: 0.4rem; height: 0.4rem; margin-right: 0.3rem; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--paper); }
+  .hero3d-place.area { font-weight: 700; font-size: 0.75rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft); }
+  .hero3d-place.sea { font: italic 500 0.8rem/1 var(--serif); color: #2f5564; }
+  .hero3d-place.scale { translate: -50% 0.5rem; }
+  button.hero3d-summit { border: 0; padding: 0; background: none; font: inherit; }
   .hero3d-summit.selectable { pointer-events: auto; cursor: pointer; }
   .hero3d-summit.selectable:hover strong, .hero3d-summit.active strong { color: var(--accent); }
   .hero3d-summit.selectable:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
@@ -429,14 +524,25 @@ const routeImages = Object.fromEntries(
   .legend { display: grid; gap: 0.45rem; margin: 0.7rem 1rem 0; font-size: 0.8rem; color: var(--ink-soft); }
   .legend span { display: flex; align-items: center; gap: 0.5rem; }
 
-  .reset-view {
-    position: absolute; right: 1rem; bottom: 2rem; width: 4rem; height: 4rem;
+  .compass { position: absolute; right: 1rem; bottom: 7rem; width: 4rem; height: 4rem; display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--ink); }
+  .compass:hover { background: var(--paper-2); }
+  .compass:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+  .compass svg { width: 92%; height: 92%; }
+  .compass text { font: 700 8px/1 var(--sans); text-anchor: middle; fill: currentColor; }
+  .compass .n { fill: #b23426; }
+  .expand-view { right: 5.75rem; }
+  .reset-view { right: 1rem; }
+  .expand-view .i-in, .stage[data-mode="range"] .expand-view .i-out { display: none; }
+  .stage[data-mode="range"] .expand-view .i-in { display: block; }
+  .expand-view[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+  .reset-view, .expand-view {
+    position: absolute; bottom: 2rem; width: 4rem; height: 4rem;
     display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--ink);
     background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; box-shadow: 2px 2px 0 var(--ink);
   }
-  .reset-view svg { width: 45%; height: 45%; }
-  .reset-view:hover { background: var(--paper-2); }
-  .reset-view:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+  :is(.reset-view, .expand-view) svg { width: 45%; height: 45%; }
+  :is(.reset-view, .expand-view):hover { background: var(--paper-2); }
+  :is(.reset-view, .expand-view):active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
 
   /* title, with the map credits centred under it */
   .stage-title { position: absolute; left: 50%; bottom: 0.9rem; translate: -50% 0; text-align: center; pointer-events: none; }
@@ -508,15 +614,22 @@ const routeImages = Object.fromEntries(
     .routes-panel { display: none; }
     .hero3d-label { font-size: 0.68rem; padding: 0.35em 0.65em 0.35em 0.5em; box-shadow: 1.5px 1.5px 0 var(--ink); }
     .hero3d-summit strong { font-size: 1rem; }
+    /* all the mountains at once: names only, smaller */
+    .stage[data-mode="range"] .hero3d-summit { margin-top: -1.2rem; }
+    .stage[data-mode="range"] .hero3d-summit strong { font-size: 0.82rem; }
+    .stage[data-mode="range"] .hero3d-summit span { display: none; }
     .detail { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: auto; z-index: 3; }
     .card-image img { aspect-ratio: 2 / 1; } /* shorter photo so the bottom card leaves the map visible */
     /* bottom of the stage, from the bottom up: credits, title, then the tip and reset button side by side */
     .stage-title { bottom: 0.6rem; width: calc(100% - 1.5rem); }
     .stage-title .kicker { display: none; }
     .credit { margin-top: 0.4rem; font-size: 0.65rem; }
-    .reset-view { right: 0.75rem; bottom: 5rem; width: 3.25rem; height: 3.25rem; }
-    .tip { bottom: 5rem; left: 0.75rem; right: 4.75rem; min-height: 3.25rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
-    .has-detail .stage-title, .has-detail .reset-view { visibility: hidden; }
+    .reset-view, .expand-view { bottom: 5rem; width: 3.25rem; height: 3.25rem; }
+    .reset-view { right: 0.75rem; }
+    .expand-view { right: 4.5rem; }
+    .compass { right: 0.75rem; bottom: 9rem; width: 3.25rem; height: 3.25rem; }
+    .tip { bottom: 5rem; left: 0.75rem; right: 8.5rem; min-height: 3.25rem; max-width: none; border-radius: 12px; font-size: 0.78rem; }
+    .has-detail .stage-title, .has-detail .reset-view, .has-detail .expand-view, .has-detail .compass { visibility: hidden; }
   }
   /* On touch screens the model takes every swipe, so the title band is where a swipe scrolls the page.
      It stretches across the stage and down to its bottom edge to make an easy target. */

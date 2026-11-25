@@ -10,6 +10,7 @@ import { getMilestones, getPeople, categoryLabels, membershipLabels } from "../l
 import { site } from "../config";
 import GitHubIcon from "../components/GitHubIcon.astro";
 import landmarks from "../data/landmarks.json";
+import range from "../data/range.json";
 
 
 // ---- Collections ----
@@ -42,7 +43,8 @@ const peopleGroups = [
 // ---- Sources ----
 const usage = (id: string) =>
   [...milestones, ...people].filter((x) => x.data.sources.some((s) => s.id === id)).length +
-  landmarks.filter((l) => l.sources.includes(id)).length;
+  landmarks.filter((l) => l.sources.includes(id)).length +
+  range.flatMap((p) => [p, ...p.routes, ...p.landmarks]).filter((x) => x.sources.includes(id)).length;
 // Landmarks on the map cite sources too; fail the build on an unknown id, like the collections do.
 for (const l of landmarks)
   for (const id of l.sources)
