@@ -821,7 +821,7 @@ export async function mountHero(
       return;
     }
     pushed = 0;
-    if (e.deltaY < 0 && mode === "range" && camDist() < rangeDist * ZOOM_IN) {
+    if (e.deltaY < 0 && mode === "range" && camDist() < rangeFitAt(controls.getAzimuthalAngle()) * ZOOM_IN) {
       const at = zoomTarget(e.clientX, e.clientY);
       if (at) { swallow(); wheelHold = true; void zoomTo(at); }
     }
@@ -850,7 +850,7 @@ export async function mountHero(
       if (!atMax()) pinchFrom = 0;
       else if (!pinchFrom) pinchFrom = spread;
       else if (closing && spread < pinchFrom * 0.85) { pinchFrom = 0; void zoomTo("range"); }
-    } else if (!closing && camDist() < rangeDist * ZOOM_IN) {
+    } else if (!closing && camDist() < rangeFitAt(controls.getAzimuthalAngle()) * ZOOM_IN) {
       const at = zoomTarget((a.x + b.x) / 2, (a.y + b.y) / 2);
       if (at) void zoomTo(at);
     }
@@ -988,6 +988,14 @@ export async function mountHero(
   const HOME_POLAR = THREE.MathUtils.degToRad(62);
   let fitDist = 0; // the distance that fits the open mountain
   let hoodFit = 0, rangeDist = 0;
+  // the distance that fits the whole range, looking from each of RANGE_STEPS headings round it
+  const RANGE_STEPS = 24;
+  let rangeFits: number[] = [];
+  const rangeFitAt = (theta: number) => {
+    if (!rangeFits.length) return rangeDist;
+    const u = ((((theta / (Math.PI * 2)) % 1) + 1) % 1) * RANGE_STEPS, i = Math.floor(u) % RANGE_STEPS;
+    return THREE.MathUtils.lerp(rangeFits[i], rangeFits[(i + 1) % RANGE_STEPS], u - Math.floor(u));
+  };
   const peakFit = new Map<string, number>();
   const center = () => here()?.center ?? ORIGIN;
   const middle = () => {
@@ -1000,10 +1008,8 @@ export async function mountHero(
     const xs = [0, ...peaks.map((p) => p.center.x)], zs = [0, ...peaks.map((p) => p.center.z)];
     return new THREE.Vector3((Math.min(...xs) + Math.max(...xs)) / 2, 5, (Math.min(...zs) + Math.max(...zs)) / 2);
   };
-  const rangeSph = () => {
-    const tall = camera.aspect < 0.95;
-    return new THREE.Spherical(rangeDist, THREE.MathUtils.degToRad(tall ? 52 : 66), bearingToTheta(tall ? 190 : 255));
-  };
+  const rangePolar = () => THREE.MathUtils.degToRad(camera.aspect < 0.95 ? 52 : 66);
+  const rangeSph = () => new THREE.Spherical(rangeDist, rangePolar(), bearingToTheta(camera.aspect < 0.95 ? 190 : 255));
   const openView = () =>
     mode === "range" ? { target: rangeTarget(), sph: rangeSph() }
     : mode === "hood" ? { target: startTarget(), sph: startView() }
@@ -1020,22 +1026,31 @@ export async function mountHero(
     if (peaks.length) {
       const cam = new THREE.PerspectiveCamera(camera.fov, camera.aspect, 0.3, 600);
       const t = rangeTarget(), q = new THREE.Vector3();
-      const limX = camera.aspect < 0.95 ? 0.92 : Math.max(0.6, 1 - (RANGE_PANEL + 60) / container.clientWidth);
+      // leave room for the mountains' names at the ends (and, on wide screens, for the list of mountains)
+      const limX = Math.max(0.6, 1 - (camera.aspect < 0.95 ? 60 : RANGE_PANEL + 60) / container.clientWidth);
       const pts = [{ center: ORIGIN, radius: R, top: summitPos }, ...peaks].flatMap((p) => [
         p.top.clone().setY(p.top.y * WIDE_RELIEF), ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => new THREE.Vector3(p.center.x + Math.cos(k * 0.785) * p.radius * 0.7, toY(1200) * WIDE_RELIEF, p.center.z + Math.sin(k * 0.785) * p.radius * 0.7)),
       ]);
-      for (rangeDist = 40; rangeDist < 420; rangeDist *= 1.04) {
-        cam.position.setFromSpherical(rangeSph()).add(t);
-        cam.lookAt(t);
-        cam.updateMatrixWorld();
-        if (pts.every((p) => { q.copy(p).project(cam); return Math.abs(q.x) < limX && q.y > -0.66 && q.y < 0.72; })) break;
-      }
+      const fit = (theta: number) => {
+        let d = 40;
+        for (; d < 420; d *= 1.04) {
+          cam.position.setFromSpherical(new THREE.Spherical(d, rangePolar(), theta)).add(t);
+          cam.lookAt(t);
+          cam.updateMatrixWorld();
+          if (pts.every((p) => { q.copy(p).project(cam); return Math.abs(q.x) < limX && q.y > -0.66 && q.y < 0.72; })) break;
+        }
+        return d;
+      };
+      rangeFits = Array.from({ length: RANGE_STEPS }, (_, k) => fit((k / RANGE_STEPS) * Math.PI * 2));
+      rangeDist = rangeFitAt(rangeSph().theta);
+      fittedAt = 0;
     }
     fitDist = mode === "hood" ? hoodFit : mode === "range" ? rangeDist : peakFit.get(mode)!;
   };
   const setLimits = () => {
-    controls.maxDistance = mode === "range" ? rangeDist * 1.1 : fitDist * 1.15;
-    controls.minDistance = mode === "range" ? rangeDist * 0.35 : fitDist * 0.1;
+    const far = Math.max(rangeDist, ...rangeFits);
+    controls.maxDistance = mode === "range" ? far * 1.1 : fitDist * 1.15;
+    controls.minDistance = mode === "range" ? Math.min(rangeDist, ...rangeFits) * 0.35 : fitDist * 0.1;
   };
   // in the all-mountains view everything is drawn a little taller, so the peaks read from far off
   const WIDE_RELIEF = 1.7;
@@ -1268,9 +1283,12 @@ export async function mountHero(
 
   // ---------------------------------------------------------------- render loop
   const v = new THREE.Vector3();
-  const place = (el: HTMLElement, pos: THREE.Vector3, show: boolean) => {
+  // keepIn: hold a centred label inside the stage's side edges (the mountains' names, at the ends of the range)
+  const place = (el: HTMLElement, pos: THREE.Vector3, show: boolean, keepIn = false) => {
     v.copy(pos).project(camera);
-    const x = (v.x * 0.5 + 0.5) * container.clientWidth, y = (-v.y * 0.5 + 0.5) * container.clientHeight;
+    let x = (v.x * 0.5 + 0.5) * container.clientWidth;
+    if (keepIn && show) { const half = el.offsetWidth / 2 + 4; x = Math.min(Math.max(x, half), container.clientWidth - half); }
+    const y = (-v.y * 0.5 + 0.5) * container.clientHeight;
     el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     el.classList.toggle("hidden", !show);
   };
@@ -1297,8 +1315,8 @@ export async function mountHero(
         const open = (a.peak?.id ?? "hood") === mode && !levelOff;
         place(a.el, a.pos, open && (selected ? a.id === selected : near && faces));
       }
-      place(summitEl, lift(summitPos), mode === "hood" || mode === "range");
-      for (const p of peaks) place(peakLabels.get(p.id)!, lift(p.top), mode === p.id || mode === "range");
+      place(summitEl, lift(summitPos), mode === "hood" || mode === "range", mode === "range");
+      for (const p of peaks) place(peakLabels.get(p.id)!, lift(p.top), mode === p.id || mode === "range", mode === "range");
       placePlaces();
       const key = facing.join(",");
       if (key !== lastFacing) { lastFacing = key; opts.onFacing?.(facing); }
@@ -1399,15 +1417,18 @@ export async function mountHero(
     return moving;
   }
 
-  // Everything turns steadily all the way round, except the whole range on a tall screen: side-on it
-  // is wider than the screen, so there it sways either side of the opening view.
-  const SWAY = THREE.MathUtils.degToRad(10);
-  function steerTurn() {
-    if (mode !== "range" || camera.aspect >= 0.95) { controls.autoRotateSpeed = TURN_SPEED; return; }
-    const off = controls.getAzimuthalAngle() - rangeSph().theta;
-    const turn = Math.atan2(Math.sin(off), Math.cos(off));
-    if (turn > SWAY) controls.autoRotateSpeed = Math.abs(TURN_SPEED); // positive turns back toward smaller angles
-    else if (turn < -SWAY) controls.autoRotateSpeed = -Math.abs(TURN_SPEED);
+  // The whole range is longer one way than the other, so as it turns the camera eases out and back in
+  // to keep it all in view, by the change in fit between the last heading and this one (so it keeps
+  // whatever zoom the reader chose).
+  let fittedAt = 0; // the fit distance the camera was last adjusted to (0: start afresh)
+  function fitRange() {
+    if (mode !== "range" || levelOff || tween) { fittedAt = 0; return; }
+    const fit = rangeFitAt(controls.getAzimuthalAngle());
+    if (fittedAt && Math.abs(fit - fittedAt) > 1e-4) {
+      camera.position.sub(controls.target).multiplyScalar(fit / fittedAt).add(controls.target);
+      render();
+    }
+    fittedAt = fit;
   }
 
   let visible = true;
@@ -1418,7 +1439,7 @@ export async function mountHero(
     if (stepRange()) render();
     if (offsetMoving) { stepOffset(); render(); }
     if (puffs.length) { stepSmoke(performance.now() / 1000); render(); }
-    steerTurn();
+    fitRange();
     controls.update();
   });
 
